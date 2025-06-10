@@ -1,0 +1,44 @@
+[
+  {
+    "ruleId": "tone-consistency",
+    "sentence": "Anyhoo, the problem won't solve itself unless mankind takes decisive action.",
+    "start": 601,
+    "end": 677,
+    "reason": "Uses informal 'Anyhoo'; not formal\u2011friendly.",
+    "suggestion": "However, the problem will not solve itself unless decisive action is taken."
+  },
+  {
+    "ruleId": "inclusive-language",
+    "term": "mankind",
+    "sentence": "Anyhoo, the problem won't solve itself unless mankind takes decisive action.",
+    "start": 647,
+    "end": 654,
+    "alternative": "humankind",
+    "reason": "Non\u2011inclusive term."
+  },
+  {
+    "ruleId": "inclusive-language",
+    "term": "Guys",
+    "sentence": "Guys, we really need to step up!",
+    "start": 678,
+    "end": 682,
+    "alternative": "Everyone",
+    "reason": "Gendered collective noun."
+  },
+  {
+    "ruleId": "claims-without-evidence",
+    "sentence": "According to recent estimates, there are around five trillion pieces of plastic currently floating in the world's oceans.",
+    "start": 112,
+    "end": 233,
+    "reason": "Numeric claim lacks citation.",
+    "suggestion": "Add citation (e.g., Jambeck et al., 2015)."
+  },
+  {
+    "ruleId": "claims-without-evidence",
+    "sentence": "Some media outlets even state that new filters could remove 99% of microplastics from wastewater streams, but these claims often lack peer-reviewed studies.",
+    "start": 1844,
+    "end": 2000,
+    "reason": "Quantitative claim without source.",
+    "suggestion": "Cite peer-reviewed research supporting 99% figure."
+  }
+]
