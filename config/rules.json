@@ -1,0 +1,51 @@
+// /config/rules.json
+[
+  {
+    "id": "passive‑voice",
+    "name": "Passive Voice",
+    "description": "Flags sentences written in the passive voice.",
+    "type": "simple",
+    "severity": "warning",
+    "pattern": "\\b(was|were|is|are|been|be)\\b\\s+\\w+ed\\b"
+  },
+  {
+    "id": "adverb‑overuse",
+    "name": "Adverb Over‑use",
+    "description": "Detects -ly adverbs preceding verbs.",
+    "type": "simple",
+    "severity": "info",
+    "pattern": "\\b\\w+ly\\b\\s+\\w+"
+  },
+  {
+    "id": "very‑weakener",
+    "name": "\"Very\" Weakener",
+    "description": "Discourage use of the word \"very\" as an intensifier.",
+    "type": "simple",
+    "severity": "info",
+    "pattern": "\\bvery\\b"
+  },
+  {
+    "id": "tone‑consistency",
+    "name": "Tone Consistency",
+    "description": "Ensure tone stays formal‑friendly throughout.",
+    "type": "ai",
+    "severity": "warning",
+    "promptTemplate": "You are a tone‑consistency checker. Highlight any sentence that deviates from a formal‑friendly tone..."
+  },
+  {
+    "id": "claims‑without‑evidence",
+    "name": "Claims Without Evidence",
+    "description": "Find factual claims lacking citations or data.",
+    "type": "ai",
+    "severity": "error",
+    "promptTemplate": "Identify statements that present facts or figures without a supporting citation..."
+  },
+  {
+    "id": "inclusive‑language",
+    "name": "Inclusive Language",
+    "description": "Flag non‑inclusive or biased terms and suggest alternatives.",
+    "type": "ai",
+    "severity": "warning",
+    "promptTemplate": "Detect non‑inclusive language in the text, list the term, why it's problematic, and suggest an alternative..."
+  }
+]
