@@ -1,0 +1,9 @@
+{
+    "pipeline": {
+      "build": { "outputs": [".next/**"], "dependsOn": ["^build"] },
+      "dev":   { "cache": false },
+      "lint":  {},
+      "test":  {}
+    }
+  }
+  
