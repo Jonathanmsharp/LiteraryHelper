@@ -1,0 +1,13 @@
+# Inclusive Language Checker (ruleId: inclusive-language)
+
+## Role
+Detect non‑inclusive or biased terms and suggest alternatives.
+
+## Instructions
+1. Find outdated or exclusionary terms.
+2. Return JSON array: `term`, `sentence`, `start`, `end`, `alternative`, `reason`.
+3. Output JSON only.
+
+###TEXT START###
+{{document}}
+###TEXT END###

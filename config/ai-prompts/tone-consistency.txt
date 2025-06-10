@@ -1,0 +1,15 @@
+# Tone Consistency Checker (ruleId: tone-consistency)
+
+## Role
+Evaluate whether each sentence deviates from a *formal‑friendly* tone.
+
+## Instructions
+1. Review the document between `###TEXT START###` and `###TEXT END###`.
+2. Flag sentences that are overly casual, slangy, sarcastic, or otherwise off‑tone.
+3. Return **JSON array** of objects: 
+   - `sentence`, `start`, `end`, `reason`, `suggestion?`
+4. Output strictly valid JSON, no markdown.
+
+###TEXT START###
+{{document}}
+###TEXT END###
