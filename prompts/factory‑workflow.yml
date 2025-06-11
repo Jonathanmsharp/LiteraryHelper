@@ -14,7 +14,7 @@ Set up a Turborepo using PNPM with the following structure:
 Initialize TypeScript project references and root config.
 
 ### Step 4: Add Dev Tooling
-
+gi
 Set up ESLint, Prettier, and Husky pre-commit hooks to enforce lint and test on commit.
 
 ### Step 5: Bootstrap Frontend with Next.js + TS
