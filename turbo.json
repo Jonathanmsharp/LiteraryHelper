@@ -1,9 +1,9 @@
 {
     "tasks": {
       "build": { "outputs": [".next/**"], "dependsOn": ["^build"] },
-      "dev":   { "cache": false },
-      "lint":  {},
-      "test":  {}
+      "dev": { "cache": false },
+      "lint": {},
+      "test": {}
     }
   }
   
