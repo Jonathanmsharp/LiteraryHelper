@@ -3,19 +3,20 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "scripts": {
-  "build": "turbo run build",
-  "dev": "turbo run dev --parallel",
-  "lint": "turbo run lint",
-  "test": "turbo run test"
-}
-
-,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.12.1",
   "devDependencies": {
     "turbo": "^2.5.4"
+  },
+  "dependencies": {
+    "jose": "^6.0.11"
   }
 }

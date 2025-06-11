@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",
+    "jose": "^6.0.11",
     "next": "^14.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
