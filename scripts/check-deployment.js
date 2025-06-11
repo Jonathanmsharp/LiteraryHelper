@@ -15,17 +15,12 @@
  *   VERCEL_TEAM_ID - Team ID (optional)
  */
 
-import axios from 'axios';
-import chalk from 'chalk';
-import dotenv from 'dotenv';
-import { program } from 'commander';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const axios = require('axios');
+const chalk = require('chalk');
+const dotenv = require('dotenv');
+const { program } = require('commander');
+const fs = require('fs');
+const path = require('path');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -112,7 +107,7 @@ async function getDeployment(deploymentId) {
 }
 
 /**
- * Get build logs for a deployment
+ * Get events/logs for a deployment
  */
 async function getDeploymentEvents(deploymentId) {
   try {
