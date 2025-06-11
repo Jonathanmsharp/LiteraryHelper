@@ -1,15 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { verifyToken } from '@/lib/verifyToken'
+import { withAuth } from './_middleware'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const user = await verifyToken(req)
-    console.log('Authenticated user:', user.sub)
+    // User is already authenticated by withAuth middleware
+    const { userId } = (req as any).auth
+    console.log('Authenticated user:', userId)
 
     // Run the analysis job here...
-    res.status(200).json({ message: 'Authorized!', user })
+    // This is where you would process the text and apply rules
+    
+    res.status(200).json({ 
+      message: 'Analysis started',
+      userId,
+      // You would include job ID or initial results here
+    })
   } catch (err) {
     console.error(err)
-    res.status(401).json({ error: 'Unauthorized' })
+    res.status(500).json({ error: 'Analysis failed' })
   }
 }
+
+export default withAuth(handler)

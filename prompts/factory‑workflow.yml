@@ -1,6 +1,10 @@
 ## Writing Analysis App: Factory Workflow Prompt List (Updated for Co-Located Backend)
 
-This is the full, sequential, atomic prompt list for Factory.ai or any AI agent to develop the entire application from an empty monorepo repository to a production-deployed, Vercel-hosted application.
+This workflow implements a writing analysis application with two types of rules:
+1. Simple rules: Pattern-based using regex, defined with "type": "simple" in rules.json
+2. AI rules: Using language models, defined with "type": "ai" in rules.json
+
+Each rule can be configured independently, including severity levels and model choices for AI rules.
 
 ###
 
@@ -51,11 +55,15 @@ Create a shared class `Rule` with `id`, `severity`, and async `execute(text)` me
 
 ### Step 13: Add SimpleRuleProcessor
 
-Implement three pattern-based rules using regex. Load from `config/rules.json`. Return match ranges and context.
+Implement pattern-based rules using regex. Rule type ("simple" vs "ai") is inferred from type field in config/rules.json. Return match ranges and context. Use sample1.md from sample-docs for initial testing.
 
 ### Step 14: Add AIRuleProcessor
 
-Create processor that accepts rule-specific prompt templates. Calls OpenAI (default GPT-4) using `openai` SDK with fallback provider interface.
+Create processor that accepts:
+- Rule-specific prompt templates
+- Per-rule model configuration (defaulting to GPT-4o)
+- Flexible provider interface allowing different models/providers per rule
+- Fallback configuration if primary model is unavailable
 
 ### Step 15: Add BullMQ Queue with Redis Backend
 
@@ -77,13 +85,21 @@ Create the following inside `pages/api/`:
 
 Add `pages/api/stream/[id].ts` to stream job progress using Server-Sent Events. Push rule-level analysis as they complete.
 
-### Step 18: Add JWT Authentication Middleware
+### Step 18: Add Clerk Authentication
 
-Authenticate incoming requests using Clerk-generated RS256 JWTs, verified using the JWKS endpoint (process.env.JWT_JWKS_URL). Decode and attach req.user if valid, reject otherwise.
+Implement Clerk authentication using their SDK and middleware. Set up environment variables:
+- NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+- CLERK_SECRET_KEY
+Verify Clerk-generated session tokens. Decode and attach user data if valid, reject otherwise.
 
 ### Step 19: Orchestrate Rule Processing
 
-In `analyze.ts`, run simple rules synchronously and enqueue AI rules. Store partial results and emit progressively.
+In analyze.ts:
+- Run simple rules synchronously first
+- Enqueue AI rules in parallel
+- Store and emit partial results progressively
+- Add loading indicator UI to show analysis in progress
+- Update UI in real-time as each rule completes
 
 ### Step 20: Add Redis Caching Layer
 
@@ -113,9 +129,13 @@ Set up Jest + ts-jest. Write unit tests for all utility functions and individual
 
 Use Supertest to test API routes: `/api/analyze`, `/api/rules`, `/api/feedback`, error cases, auth, and Redis hits.
 
-### Step 27: End-to-End Tests on Browserbase MCP
+### Step 27: End-to-End Tests Setup
 
-Write Playwright scripts that load the app in MCP, type a document, wait for analysis, and validate highlights + sidebar.
+NOTE: Requires Factory Bridge setup on separate machine.
+Once Factory Bridge is configured:
+- Write Playwright scripts for browser testing
+- Use Browserbase MCP or equivalent for cross-browser testing
+- Test document loading, analysis flow, and UI updates
 
 ### Step 28: Accessibility Testing
 
@@ -135,7 +155,11 @@ Ensure production branch (`main`) auto-deploys frontend project (`apps/frontend`
 
 ### Step 32: Seed Initial Rule Metadata
 
-Add script `scripts/seedRules.ts` that loads `config/rules.json` and AI prompt templates to insert six starter rules.
+Add script scripts/seedRules.ts that:
+- Loads config/rules.json and AI prompt templates
+- Inserts six starter rules
+- Uses sample1.md and sample1_expected.json as primary test cases
+- Creates additional test cases covering edge cases
 
 ### Step 33: Environment Configuration
 
