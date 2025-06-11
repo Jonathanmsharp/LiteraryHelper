@@ -9,7 +9,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 NODE_SCRIPT="$SCRIPT_DIR/check-deployment.js"
 
 # Default values
-PROJECT_NAME="LiteraryHelper"
+PROJECT_NAME="literary-helper"
 TIMEOUT=15
 WAIT=10
 LOGS_DIR="$ROOT_DIR/deployment-logs"

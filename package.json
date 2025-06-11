@@ -1,26 +1,27 @@
 {
-  "name": "LiteraryHelper",
+  "name": "literaryhelper",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
   "scripts": {
+    "dev": "turbo run dev",
     "build": "turbo run build",
-    "dev": "turbo run dev --parallel",
+    "start": "turbo run start",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.12.1",
   "devDependencies": {
-    "turbo": "^2.5.4"
+    "prettier": "^3.1.0",
+    "turbo": "^2.0.0"
   },
   "dependencies": {
     "axios": "^1.9.0",
     "chalk": "^5.4.1",
     "commander": "^14.0.0",
-    "dotenv": "^16.5.0",
-    "jose": "^6.0.11"
+    "dotenv": "^16.5.0"
+  },
+  "packageManager": "pnpm@8.9.0",
+  "engines": {
+    "node": ">=18"
   }
 }
