@@ -1,6 +1,16 @@
 {
     "tasks": {
-      "build": { "outputs": [".next/**"], "dependsOn": ["^build"] },
+      "build": { "outputs": [".next/**"], "dependsOn": ["^build"] ,
+    "env": [
+        "OPENAI_API_KEY",
+        "JWT_PUBLIC_KEY",
+        "POSTGRES_URL",
+        "REDIS_URL",
+        "CLERK_PUBLISHABLE_KEY",
+        "CLERK_SECRET_KEY",
+        "JWT_ISSUER",
+        "JWT_JWKS_URL"
+      ]},
       "dev": { "cache": false },
       "lint": {},
       "test": {}
