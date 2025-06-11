@@ -2,13 +2,13 @@
   "name": "literaryhelper",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
     "start": "turbo run start",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "monitor": "node scripts/check-deployment.js"
   },
   "devDependencies": {
     "prettier": "^3.1.0",
