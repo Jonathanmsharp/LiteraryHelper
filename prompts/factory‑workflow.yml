@@ -79,7 +79,7 @@ Add `pages/api/stream/[id].ts` to stream job progress using Server-Sent Events. 
 
 ### Step 18: Add JWT Authentication Middleware
 
-Verify JWT using RS256 public key (read from env var). Attach decoded user to `req.user`. Reject on invalid/missing.
+Authenticate incoming requests using Clerk-generated RS256 JWTs, verified using the JWKS endpoint (process.env.JWT_JWKS_URL). Decode and attach req.user if valid, reject otherwise.
 
 ### Step 19: Orchestrate Rule Processing
 
