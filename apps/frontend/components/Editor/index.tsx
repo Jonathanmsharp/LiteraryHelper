@@ -1,26 +1,21 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { createEditor, Descendant, Editor as SlateEditor } from 'slate';
+import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor, Element as SlateElement } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
-import { withHistory } from 'slate-history';
+import { withHistory, HistoryEditor } from 'slate-history';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { create } from 'zustand';
 
 // Define custom element types
-type ParagraphElement = {
-  type: 'paragraph';
-  children: Descendant[];
+type CustomElementType = 'paragraph' | 'heading';
+
+type CustomElement = {
+  type: CustomElementType;
+  level?: number;
+  children: CustomText[];
 };
 
-type HeadingElement = {
-  type: 'heading';
-  level: number;
-  children: Descendant[];
-};
-
-type CustomElement = ParagraphElement | HeadingElement;
-
-// Define custom leaf types for text formatting
-type FormattedText = {
+// Define custom text types
+type CustomText = {
   text: string;
   bold?: boolean;
   italic?: boolean;
@@ -31,6 +26,15 @@ type FormattedText = {
     severity: 'error' | 'warning' | 'info';
   };
 };
+
+// Extend the Slate types
+declare module 'slate' {
+  interface CustomTypes {
+    Editor: BaseEditor & ReactEditor & HistoryEditor;
+    Element: CustomElement;
+    Text: CustomText;
+  }
+}
 
 // Define editor store type
 interface EditorStore {
@@ -62,18 +66,18 @@ const useEditorStore = create<EditorStore>((set) => ({
 
 // Define props for the Editor component
 interface EditorProps {
-  initialValue?: Descendant[];
+  defaultValue?: Descendant[];
   placeholder?: string;
   readOnly?: boolean;
   onChange?: (value: string) => void;
 }
 
 // Default initial value for the editor
-const initialValue: Descendant[] = [
+const defaultEditorValue: Descendant[] = [
   {
     type: 'paragraph',
     children: [{ text: '' }],
-  },
+  } as CustomElement,
 ];
 
 // Debounce function implementation
@@ -92,7 +96,11 @@ function debounce<F extends (...args: any[]) => any>(
 }
 
 // Element renderer component
-const Element = ({ attributes, children, element }: any) => {
+const Element = ({ attributes, children, element }: {
+  attributes: any;
+  children: React.ReactNode;
+  element: CustomElement;
+}) => {
   switch (element.type) {
     case 'heading':
       return <h2 {...attributes}>{children}</h2>;
@@ -102,7 +110,11 @@ const Element = ({ attributes, children, element }: any) => {
 };
 
 // Leaf renderer component
-const Leaf = ({ attributes, children, leaf }: any) => {
+const Leaf = ({ attributes, children, leaf }: {
+  attributes: any;
+  children: React.ReactNode;
+  leaf: CustomText;
+}) => {
   let style: React.CSSProperties = {};
 
   if (leaf.bold) {
@@ -140,7 +152,7 @@ const Leaf = ({ attributes, children, leaf }: any) => {
 
 // Main Editor component wrapped in React.memo for performance
 const Editor = React.memo(({
-  initialValue = initialValue,
+  defaultValue = defaultEditorValue,
   placeholder = 'Start writing...',
   readOnly = false,
   onChange,
@@ -149,7 +161,7 @@ const Editor = React.memo(({
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
   
   // Track the editor value state
-  const [value, setValue] = useState<Descendant[]>(initialValue);
+  const [value, setValue] = useState<Descendant[]>(defaultValue);
   
   // Access the editor store
   const { setText, analysisInProgress } = useEditorStore();
@@ -158,7 +170,7 @@ const Editor = React.memo(({
   const debouncedOnChange = useCallback(
     debounce((value: Descendant[]) => {
       const textContent = value
-        .map((node) => SlateEditor.string(editor, node))
+        .map((node) => Node.string(node))
         .join('\n');
       
       setText(textContent);
@@ -167,13 +179,14 @@ const Editor = React.memo(({
         onChange(textContent);
       }
     }, 500),
-    [editor, onChange, setText]
+    [onChange, setText]
   );
 
   // Define hotkey handlers
   useHotkeys('mod+b', (event) => {
     event.preventDefault();
-    const isBold = SlateEditor.marks(editor)?.bold === true;
+    const marks = SlateEditor.marks(editor) || {};
+    const isBold = marks.bold === true;
     if (isBold) {
       editor.removeMark('bold');
     } else {
@@ -183,7 +196,8 @@ const Editor = React.memo(({
 
   useHotkeys('mod+i', (event) => {
     event.preventDefault();
-    const isItalic = SlateEditor.marks(editor)?.italic === true;
+    const marks = SlateEditor.marks(editor) || {};
+    const isItalic = marks.italic === true;
     if (isItalic) {
       editor.removeMark('italic');
     } else {
@@ -193,7 +207,8 @@ const Editor = React.memo(({
 
   useHotkeys('mod+u', (event) => {
     event.preventDefault();
-    const isUnderline = SlateEditor.marks(editor)?.underline === true;
+    const marks = SlateEditor.marks(editor) || {};
+    const isUnderline = marks.underline === true;
     if (isUnderline) {
       editor.removeMark('underline');
     } else {
@@ -212,7 +227,7 @@ const Editor = React.memo(({
       
       <Slate
         editor={editor}
-        value={value}
+        initialValue={value}
         onChange={(newValue) => {
           setValue(newValue);
           debouncedOnChange(newValue);

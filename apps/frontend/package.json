@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",
+    "@literaryhelper/types": "workspace:^",
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.44.2",
     "jose": "^6.0.11",

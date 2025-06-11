@@ -1,18 +1,38 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { withAuth } from './_middleware'
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // User is already authenticated by withAuth middleware
-    const { userId } = (req as any).auth
+    // Get user ID from header set by middleware
+    const userId = req.headers['x-auth-user-id'] as string
+    const sessionId = req.headers['x-auth-session-id'] as string
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+    
     console.log('Authenticated user:', userId)
 
-    // Run the analysis job here...
+    // Handle only POST requests for analysis
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' })
+    }
+
+    // Extract text from request body
+    const { text } = req.body
+    
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Text is required' })
+    }
+
+    // TODO: Run the analysis job here...
     // This is where you would process the text and apply rules
     
+    // For now, just return a success response
     res.status(200).json({ 
       message: 'Analysis started',
       userId,
+      sessionId,
+      textLength: text.length,
       // You would include job ID or initial results here
     })
   } catch (err) {
@@ -20,5 +40,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(500).json({ error: 'Analysis failed' })
   }
 }
-
-export default withAuth(handler)

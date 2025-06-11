@@ -1,6 +1,5 @@
-import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb, pgEnum, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { RuleSeverity, RuleType } from '@literaryhelper/types';
 
 /**
  * Enums for database schema
@@ -8,6 +7,10 @@ import { RuleSeverity, RuleType } from '@literaryhelper/types';
 export const severityEnum = pgEnum('severity', ['info', 'warning', 'error']);
 export const ruleTypeEnum = pgEnum('rule_type', ['simple', 'ai']);
 export const analysisStatusEnum = pgEnum('analysis_status', ['pending', 'processing', 'completed', 'error']);
+
+// Type definitions to avoid circular dependencies
+export type RuleSeverity = 'info' | 'warning' | 'error';
+export type RuleType = 'simple' | 'ai';
 
 /**
  * Rules table - stores rule definitions
@@ -46,7 +49,7 @@ export const analyses = pgTable('analyses', {
   userId: varchar('user_id', { length: 64 }).references(() => users.id, { onDelete: 'set null' }),
   sessionId: varchar('session_id', { length: 128 }),
   text: text('text').notNull(),
-  textHash: varchar('text_hash', { length: 64 }).notNull().index(),
+  textHash: varchar('text_hash', { length: 64 }).notNull(),
   status: analysisStatusEnum('status').default('pending').notNull(),
   progress: integer('progress').default(0),
   results: jsonb('results').default('[]'),
@@ -54,6 +57,10 @@ export const analyses = pgTable('analyses', {
   processingTimeMs: integer('processing_time_ms'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    textHashIdx: index('text_hash_idx').on(table.textHash),
+  };
 });
 
 /**
@@ -66,6 +73,11 @@ export const analysisRuleResults = pgTable('analysis_rule_results', {
   matches: jsonb('matches').default('[]'),
   processingTimeMs: integer('processing_time_ms'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    analysisIdIdx: index('analysis_rule_results_analysis_id_idx').on(table.analysisId),
+    ruleIdIdx: index('analysis_rule_results_rule_id_idx').on(table.ruleId),
+  };
 });
 
 /**
@@ -80,6 +92,12 @@ export const feedback = pgTable('feedback', {
   helpful: boolean('helpful').notNull(),
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    analysisIdIdx: index('feedback_analysis_id_idx').on(table.analysisId),
+    ruleIdIdx: index('feedback_rule_id_idx').on(table.ruleId),
+    userIdIdx: index('feedback_user_id_idx').on(table.userId),
+  };
 });
 
 /**
