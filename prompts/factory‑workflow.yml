@@ -1,122 +1,170 @@
-# Factory Workflow
-# Follow each step in order. You will find rule specs under /config/rules.json and prompt templates in /config/ai-prompts/.
+## Writing Analysis App: Factory Workflow Prompt List (Updated for Co-Located Backend)
 
-Step 1: Initialise GitHub Repository
-Make sure private GitHub repo named LiteraryHelper is set up and ready for development;
+This is the full, sequential, atomic prompt list for Factory.ai or any AI agent to develop the entire application from an empty monorepo repository to a production-deployed, Vercel-hosted application.
 
-Step 2: Configure Vercel Project
-Make sure the GitHub repo is linked properly to Vercel, enabling automatic deployments for main (production) and PR branches (preview).
+###
 
-Step 3: Scaffold Monorepo with Turbo & PNPM
-Set up a Turborepo workspace using PNPM with two apps (apps/frontend, apps/backend) and shared config (packages/config). Enable TypeScript project references.
+### Step 3: Scaffold Monorepo with Turborepo & PNPM
 
-Step 4: Add Dev‑Tooling Baseline
-Configure ESLint, Prettier, Husky pre‑commit hooks (lint + test); enforce format on commit.
+Set up a Turborepo using PNPM with the following structure:
 
-Step 5: Bootstrap Frontend with Next.js + TS
-Inside apps/frontend run npx create-next-app@latest --ts; remove boilerplate pages and commit.
+* `apps/frontend`
+* `packages/types`
 
-Step 6: Install Slate.js & Editor Dependencies
-Add slate, slate-react, slate-history, zustand, react-hotkeys-hook. Commit empty Editor component.
+Initialize TypeScript project references and root config.
 
-Step 7: Optimise Editor Rendering
-Implement Slate editor with React.memo, custom leaf/element renderers, Web Worker offload for syntax highlighting, and 500 ms on‑change debounce.
+### Step 4: Add Dev Tooling
 
-Step 8: Scaffold Backend with Express + TS
-Inside apps/backend run npm init -y; install express, bullmq, ioredis, pg, openai, zod, jsonwebtoken, ts-node-dev, typescript. Generate tsconfig.json.
+Set up ESLint, Prettier, and Husky pre-commit hooks to enforce lint and test on commit.
 
-Step 9: Define Shared Types Package
-Create packages/types with TypeScript interfaces for Rule, AnalysisRequest, AnalysisResult.
+### Step 5: Bootstrap Frontend with Next.js + TS
 
-Step 10: Implement PostgreSQL Schema Migration
-Add drizzle or knex migration scripts creating tables rules, users, analyses, plus JSONB rule metadata.
+Inside `apps/frontend`, run `npx create-next-app@latest --ts`. Remove boilerplate pages and commit.
 
-Step 11: Provision Local DB & Cache
-Add Docker Compose services for postgres and redis; expose ports 5432 and 6379. Commit.
+### Step 6: Install Slate.js and Editor Dependencies
 
-Step 12: Implement Rule Base Class
-In backend, create abstract Rule class with id, severity, and async execute(text).
+Install: `slate`, `slate-react`, `slate-history`, `zustand`, `react-hotkeys-hook`. Add an empty `Editor` component.
 
-Step 13: Implement SimpleRuleProcessor
-Create processor using spaCy.js patterns for Rules 1‑3; load patterns from rules.json.
+### Step 7: Optimize Editor for Performance
 
-Step 14: Implement AIRuleProcessor
-Create processor that accepts provider and model params; default to openai:gpt‑4o. Build per‑rule prompt templates.
+Implement Slate editor with `React.memo`, Web Worker offload for syntax parsing, and debounce keystroke events to 500ms.
 
-Step 15: Implement Bull Queue Infrastructure
-Instantiate Bull queue analysis; workers: simpleRuleWorker (5 concurrency) and aiRuleWorker (2). Use back‑off and rate‑limits from env.
+### Step 8: Add API Directory in Frontend
 
-Step 16: Build Express REST API
-Routes: POST /analyze → enqueue job & return job ID; GET /analysis/:id → poll result; GET /rules → rule metadata; POST /feedback.
+Inside `apps/frontend`, create the folder `pages/api/` to house serverless API endpoints.
 
-Step 17: Add WebSocket Gateway
-Use ws to push incremental rule results back to client (analysis_progress events).
+### Step 9: Define Shared Types Package
 
-Step 18: Add Auth Middleware
-Implement JWT verify (RS256 public key) and attach req.user; block if invalid or over rate limit.
+Create `packages/types` with TypeScript interfaces for `Rule`, `AnalysisRequest`, `AnalysisResult`.
 
-Step 19: Write Rule Orchestrator Service
-Upon job start, run simple rules synchronously, emit first packet; enqueue AI‑rules in parallel; aggregate partial results.
+### Step 10: Create PostgreSQL Schema
 
-Step 20: Integrate Redis Cache Layer
-Wrap analysis results with cache‑aside TTL: 15 min for text‑hash hits; invalidate on text change.
+Add Drizzle ORM or Knex migration scripts to generate tables: `rules`, `analyses`, `users`, `feedback`. Include seed scripts.
 
-Step 21: Implement Frontend API Client
-Create useAnalysis hook: POST text, subscribe WebSocket, merge incremental results into Zustand store.
+### Step 11: Provision Postgres & Redis via Docker
 
-Step 22: Add Real‑Time Highlighting
-Update editor to underline text ranges per rule severity colours; clicking opens sidebar with details.
+Add `docker-compose.yml` with services for PostgreSQL and Redis. Expose ports 5432 and 6379.
 
-Step 23: Build Rule Sidebar UI
-Design sliding panel listing rule explanation, examples, and “mark as helpful” feedback button.
+### Step 12: Implement Base Rule Engine
 
-Step 24: Store User Feedback
-On sidebar feedback, POST to /feedback; persist to analysis_feedback table for future model fine‑tuning.
+Create a shared class `Rule` with `id`, `severity`, and async `execute(text)` method. Abstract both simple and AI rules from it.
 
-Step 25: Unit Tests – Utilities & Rules
-Configure Jest + ts‑jest; write tests for string utilities and each simple rule achieving ≥90 % coverage.
+### Step 13: Add SimpleRuleProcessor
 
-Step 26: Integration Tests – API Flow
-With Supertest, cover /analyze happy path, rate‑limit failure, and JWT auth rejection.
+Implement three pattern-based rules using regex. Load from `config/rules.json`. Return match ranges and context.
 
-Step 27: End‑to‑End Tests on Browserbase MCP
-Write Playwright scripts simulating a user typing, triggering analysis, and verifying highlights. Run against Vercel preview via Browserbase.
+### Step 14: Add AIRuleProcessor
 
-Step 28: Accessibility Tests
-Integrate axe-core into Playwright run; fail pipeline if WCAG‑AA issues detected.
+Create processor that accepts rule-specific prompt templates. Calls OpenAI (default GPT-4) using `openai` SDK with fallback provider interface.
 
-Step 29: Performance & Load Testing
-Author Artillery scenario: 50 concurrent users, 1 k‑word docs, 5 min soak; assert P95 < 3 s.
+### Step 15: Add BullMQ Queue with Redis Backend
 
-Step 30: GitHub Actions CI Pipeline
-Create .github/workflows/ci.yml: install, lint, unit + integration tests, build apps, cache Docker layer.
+Configure Redis-backed BullMQ queue `analysis` with two workers:
 
-Step 31: GitHub Actions CD Pipeline
-Create .github/workflows/cd.yml: on main success, deploy frontend & backend to Vercel using vercel pull + vercel deploy --prod.
+* `simpleWorker` – 5 concurrency
+* `aiWorker` – 2 concurrency
 
-Step 32: Seed Rule Metadata
-Add scripts/seedRules.ts inserting six initial rules with patterns, prompt templates, severity, colours.
+### Step 16: Implement REST API as Next.js Handlers
 
-Step 33: Environment Configuration
-Add .vercel/project.json & local .env.example for OPENAI_API_KEY, LLM_PROVIDER, POSTGRES_URL, REDIS_URL, JWT_PUBLIC_KEY.
+Create the following inside `pages/api/`:
 
-Step 34: Monitoring Setup
-Install prom-client; expose /metrics with queue depth, rule timing, GPT latency; auto‑scraped by Vercel Observability.
+* `analyze.ts` → POST request: orchestrates rule execution
+* `analysis/[id].ts` → GET request: return current job result
+* `rules.ts` → GET request: return all available rules
+* `feedback.ts` → POST request: store user feedback
 
-Step 35: Logging & Error Handling
-Pipe pino logs in JSON; configure global error middleware returning problem‑details (JSON).
+### Step 17: Implement Streaming Progress API (SSE)
 
-Step 36: Security Hardening
-Add Helmet for HTTP headers; enforce TLS in Vercel; configure Redis password & renamed dangerous commands.
+Add `pages/api/stream/[id].ts` to stream job progress using Server-Sent Events. Push rule-level analysis as they complete.
 
-Step 37: SLA Dashboards
-Create Next.js /admin/dashboard page showing P95 rule timings and error rates via /metrics API.
+### Step 18: Add JWT Authentication Middleware
 
-Step 38: Documentation
-Generate docs/ARCHITECTURE.md, docs/API.md, docs/RULES.md summarising system; link citations back to plan.
+Verify JWT using RS256 public key (read from env var). Attach decoded user to `req.user`. Reject on invalid/missing.
 
-Step 39: Final Smoke Test
-Deploy latest main to production; run Browserbase MCP script; ensure green passes on highlights, latency, and auth.
+### Step 19: Orchestrate Rule Processing
 
-Step 40: Handoff to factory.ai
-Commit prompts/factory‑workflow.yml describing repo structure, build, test, and deploy commands; notify stakeholders that the automated agent can now iterate.
+In `analyze.ts`, run simple rules synchronously and enqueue AI rules. Store partial results and emit progressively.
+
+### Step 20: Add Redis Caching Layer
+
+Wrap analysis with cache-aside strategy: hash input text, TTL 15m, skip queue for repeat submissions.
+
+### Step 21: Create Frontend API Client
+
+Build a `useAnalysis()` React hook that POSTs to `/api/analyze`, subscribes to `/api/stream/[id]`, and updates Zustand state.
+
+### Step 22: Add Real-Time Editor Highlighting
+
+Extend Slate.js rendering to highlight spans returned by each rule using severity colors.
+
+### Step 23: Build Rule Explanation Sidebar
+
+Create UI component that shows matched rule text, reason, and suggestion. Add button to submit user feedback.
+
+### Step 24: Implement Feedback API
+
+In `api/feedback.ts`, write feedback to `analysis_feedback` table. Include userId, ruleId, helpful (bool), notes.
+
+### Step 25: Unit Test Rule Logic
+
+Set up Jest + ts-jest. Write unit tests for all utility functions and individual rule logic to reach ≥90% coverage.
+
+### Step 26: Integration Tests for API
+
+Use Supertest to test API routes: `/api/analyze`, `/api/rules`, `/api/feedback`, error cases, auth, and Redis hits.
+
+### Step 27: End-to-End Tests on Browserbase MCP
+
+Write Playwright scripts that load the app in MCP, type a document, wait for analysis, and validate highlights + sidebar.
+
+### Step 28: Accessibility Testing
+
+Run `axe-core` inside Playwright to check WCAG AA compliance on the full interface. Fail on violations.
+
+### Step 29: Load Testing with Artillery
+
+Simulate 50 concurrent users sending 1k-word documents over 5 minutes. Assert P95 analysis < 3s.
+
+### Step 30: GitHub Actions CI Pipeline
+
+Create `.github/workflows/ci.yml`: install deps, lint, run unit/integration tests, validate build.
+
+### Step 31: Vercel Production Deploy
+
+Ensure production branch (`main`) auto-deploys frontend project (`apps/frontend`) via Vercel settings. Attach all env vars.
+
+### Step 32: Seed Initial Rule Metadata
+
+Add script `scripts/seedRules.ts` that loads `config/rules.json` and AI prompt templates to insert six starter rules.
+
+### Step 33: Environment Configuration
+
+Add `.env.example` with: `OPENAI_API_KEY`, `POSTGRES_URL`, `REDIS_URL`, `JWT_PUBLIC_KEY`. Use `vercel env pull` to populate `.env.local`.
+
+### Step 34: Add Prometheus-Compatible Metrics
+
+Expose `/api/metrics` for queue depth, GPT latency, rule timings. Use `prom-client`. Vercel analytics can scrape.
+
+### Step 35: Add Logging & Error Handling
+
+Log to `pino` in JSON format. Add API-wide error middleware that returns `application/problem+json`.
+
+### Step 36: Security Hardening
+
+Add `helmet` middleware, CSRF checks on feedback endpoint, and token rotation logic using Redis for session tracking.
+
+### Step 37: SLA Dashboard
+
+Add `/admin/dashboard` page that visualizes P95 rule latencies, error rates, and queue size over time.
+
+### Step 38: Documentation
+
+Create `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/RULES.md`. Include prompt templates and example results.
+
+### Step 39: Final Smoke Test
+
+Run full Playwright + Browserbase flow on latest Vercel preview. Verify JWT auth, real-time updates, Redis + DB I/O.
+
+### Step 40: Commit Factory Workflow YAML
+
+Write and commit `prompts/factory-workflow.yml` describing this 40-step sequence and build/test/deploy phases. Include env var names.
