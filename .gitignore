@@ -62,3 +62,9 @@ yarn-error.log*
 # IDE/Editor
 .idea
 .vscode
+
+# Build output
+.next/
+.turbo/
+apps/*/node_modules/
+node_modules/
