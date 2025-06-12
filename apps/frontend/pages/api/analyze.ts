@@ -30,8 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const jobId = randomUUID()
 
     const [{ SimpleRuleProcessor }, { AIRuleProcessor }] = await Promise.all([
-      import('../../../lib/rules/SimpleRuleProcessor'),
-      import('../../../lib/rules/AIRuleProcessor'),
+      import('../../lib/rules/SimpleRuleProcessor'),
+      import('../../lib/rules/AIRuleProcessor'),
     ])
 
     const g = globalThis as any
@@ -43,28 +43,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Run simple rules first (synchronous)
     const simpleMatches = await simpleProcessor.processText(text)
 
-    // Try to enqueue AI work
-    let queueEnqueued = false
-    try {
-      const { queueService } = await import('../../../lib/queue/QueueService')
-      await queueService.addAnalysisJob({ text, userId, sessionId } as any, jobId)
-      queueEnqueued = true
-    } catch (err) {
-      console.warn('[analyze] Queue failed, running AI locally:', err)
-      const aiMatches = await aiProcessor.processText(text)
-      simpleMatches.push(...aiMatches)
-    }
+    // Run AI rules (since queue not implemented yet, run locally)
+    console.log('[analyze] Running AI rules locally (queue not available)')
+    const aiMatches = await aiProcessor.processText(text)
+    
+    const allMatches = [...simpleMatches, ...aiMatches]
 
-    res.status(202).json({
-      message: queueEnqueued ? 'Analysis in progress' : 'Analysis completed',
+    res.status(200).json({
+      message: 'Analysis completed',
       userId,
       sessionId,
       jobId,
       textLength: text.length,
-      matchCount: simpleMatches.length,
-      matches: simpleMatches,
-      status: queueEnqueued ? 'processing' : 'completed',
-      statusEndpoint: `/api/analysis/${jobId}`,
+      matchCount: allMatches.length,
+      matches: allMatches,
+      status: 'completed',
     })
   } catch (err) {
     console.error(err)
