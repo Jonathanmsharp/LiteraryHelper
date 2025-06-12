@@ -25,34 +25,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Text is required' })
     }
 
-    // Lazy-load processors
+    // Step 19: Orchestrate rule processing
+    const { randomUUID } = await import('crypto')
+    const jobId = randomUUID()
+
     const [{ SimpleRuleProcessor }, { AIRuleProcessor }] = await Promise.all([
       import('../../../lib/rules/SimpleRuleProcessor'),
       import('../../../lib/rules/AIRuleProcessor'),
     ])
 
-    // Cache processor instances globally
     const g = globalThis as any
     g.__simpleProcessor = g.__simpleProcessor || new SimpleRuleProcessor()
     g.__aiProcessor = g.__aiProcessor || new AIRuleProcessor()
     const simpleProcessor = g.__simpleProcessor as InstanceType<typeof SimpleRuleProcessor>
     const aiProcessor = g.__aiProcessor as InstanceType<typeof AIRuleProcessor>
 
-    // Run processors in parallel
-    const [simpleMatches, aiMatches] = await Promise.all([
-      simpleProcessor.processText(text),
-      aiProcessor.processText(text),
-    ])
+    // Run simple rules first (synchronous)
+    const simpleMatches = await simpleProcessor.processText(text)
 
-    const allMatches = [...simpleMatches, ...aiMatches]
+    // Try to enqueue AI work
+    let queueEnqueued = false
+    try {
+      const { queueService } = await import('../../../lib/queue/QueueService')
+      await queueService.addAnalysisJob({ text, userId, sessionId } as any, jobId)
+      queueEnqueued = true
+    } catch (err) {
+      console.warn('[analyze] Queue failed, running AI locally:', err)
+      const aiMatches = await aiProcessor.processText(text)
+      simpleMatches.push(...aiMatches)
+    }
 
-    res.status(200).json({
-      message: 'Analysis completed',
+    res.status(202).json({
+      message: queueEnqueued ? 'Analysis in progress' : 'Analysis completed',
       userId,
       sessionId,
+      jobId,
       textLength: text.length,
-      matchCount: allMatches.length,
-      matches: allMatches,
+      matchCount: simpleMatches.length,
+      matches: simpleMatches,
+      status: queueEnqueued ? 'processing' : 'completed',
+      statusEndpoint: `/api/analysis/${jobId}`,
     })
   } catch (err) {
     console.error(err)
