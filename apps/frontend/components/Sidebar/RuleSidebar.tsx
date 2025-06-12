@@ -42,9 +42,30 @@ const RuleSidebar: React.FC = () => {
   const { ruleId, range, suggestion, explanation, severity } = selectedMatch;
   const severityColor = getSeverityColor(severity);
 
-  const handleFeedback = (helpful: boolean) => {
+  const handleFeedback = async (helpful: boolean) => {
     console.log(`Feedback for rule ${ruleId} (${range.text}): ${helpful ? 'Helpful' : 'Not Helpful'}`);
-    alert(`Thank you for your feedback! This feature will send data to the backend in Step 24.`);
+    
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ruleId,
+          helpful,
+          matchText: range.text,
+          notes: helpful ? 'User found this rule helpful' : 'User found this rule not helpful',
+        }),
+      });
+      
+      if (response.ok) {
+        alert('Thank you for your feedback!');
+      } else {
+        alert('Failed to record feedback. Please try again.');
+      }
+    } catch (error) {
+      console.error('Feedback error:', error);
+      alert('Failed to record feedback. Please try again.');
+    }
   };
 
   return (
