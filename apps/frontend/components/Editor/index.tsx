@@ -3,18 +3,14 @@ import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory, HistoryEditor } from 'slate-history';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { create } from 'zustand';
-
-// Define custom element types
-type CustomElementType = 'paragraph' | 'heading';
+import { useAnalysis } from '../../lib/hooks/useAnalysis';
 
 type CustomElement = {
-  type: CustomElementType;
+  type: 'paragraph' | 'heading';
   level?: number;
   children: CustomText[];
 };
 
-// Define custom text types
 type CustomText = {
   text: string;
   bold?: boolean;
@@ -27,7 +23,6 @@ type CustomText = {
   };
 };
 
-// Extend the Slate types
 declare module 'slate' {
   interface CustomTypes {
     Editor: BaseEditor & ReactEditor & HistoryEditor;
@@ -36,35 +31,6 @@ declare module 'slate' {
   }
 }
 
-// Define editor store type
-interface EditorStore {
-  text: string;
-  analysisInProgress: boolean;
-  results: Array<{
-    ruleId: string;
-    matches: Array<{
-      start: number;
-      end: number;
-      text: string;
-      suggestion?: string;
-    }>;
-  }>;
-  setText: (text: string) => void;
-  setAnalysisInProgress: (inProgress: boolean) => void;
-  setResults: (results: any[]) => void;
-}
-
-// Create editor store with Zustand
-const useEditorStore = create<EditorStore>((set) => ({
-  text: '',
-  analysisInProgress: false,
-  results: [],
-  setText: (text) => set({ text }),
-  setAnalysisInProgress: (inProgress) => set({ analysisInProgress: inProgress }),
-  setResults: (results) => set({ results }),
-}));
-
-// Define props for the Editor component
 interface EditorProps {
   defaultValue?: Descendant[];
   placeholder?: string;
@@ -72,156 +38,110 @@ interface EditorProps {
   onChange?: (value: string) => void;
 }
 
-// Default initial value for the editor
 const defaultEditorValue: Descendant[] = [
-  {
-    type: 'paragraph',
-    children: [{ text: '' }],
-  } as CustomElement,
+  { type: 'paragraph', children: [{ text: '' }] } as CustomElement,
 ];
 
-// Debounce function implementation
-function debounce<F extends (...args: any[]) => any>(
-  func: F,
-  waitFor: number
-): (...args: Parameters<F>) => void {
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number): (...args: Parameters<F>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-
   return (...args: Parameters<F>): void => {
-    if (timeout !== null) {
-      clearTimeout(timeout);
-    }
+    if (timeout !== null) clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), waitFor);
   };
 }
 
-// Element renderer component
-const Element = ({ attributes, children, element }: {
-  attributes: any;
-  children: React.ReactNode;
-  element: CustomElement;
-}) => {
+const Element = ({ attributes, children, element }: any) => {
   switch (element.type) {
-    case 'heading':
-      return <h2 {...attributes}>{children}</h2>;
-    default:
-      return <p {...attributes}>{children}</p>;
+    case 'heading': return <h2 {...attributes}>{children}</h2>;
+    default: return <p {...attributes}>{children}</p>;
   }
 };
 
-// Leaf renderer component
-const Leaf = ({ attributes, children, leaf }: {
-  attributes: any;
-  children: React.ReactNode;
-  leaf: CustomText;
-}) => {
+const Leaf = ({ attributes, children, leaf }: any) => {
   let style: React.CSSProperties = {};
-
-  if (leaf.bold) {
-    style.fontWeight = 'bold';
-  }
-  if (leaf.italic) {
-    style.fontStyle = 'italic';
-  }
-  if (leaf.underline) {
-    style.textDecoration = 'underline';
-  }
+  
+  if (leaf.bold) style.fontWeight = 'bold';
+  if (leaf.italic) style.fontStyle = 'italic';
+  if (leaf.underline) style.textDecoration = 'underline';
+  
   if (leaf.highlight) {
     switch (leaf.highlight.severity) {
       case 'error':
         style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
         style.textDecoration = 'underline wavy red';
+        style.cursor = 'pointer';
         break;
       case 'warning':
         style.backgroundColor = 'rgba(255, 165, 0, 0.2)';
         style.textDecoration = 'underline wavy orange';
+        style.cursor = 'pointer';
         break;
       case 'info':
         style.backgroundColor = 'rgba(0, 0, 255, 0.1)';
         style.textDecoration = 'underline dotted blue';
+        style.cursor = 'pointer';
         break;
     }
   }
 
   return (
-    <span {...attributes} style={style}>
+    <span
+      {...attributes}
+      style={style}
+      onClick={leaf.highlight ? () => {
+        console.log('Clicked highlight:', leaf.highlight);
+      } : undefined}
+    >
       {children}
     </span>
   );
 };
 
-// Main Editor component wrapped in React.memo for performance
-const Editor = React.memo(({
-  defaultValue = defaultEditorValue,
-  placeholder = 'Start writing...',
-  readOnly = false,
-  onChange,
-}: EditorProps) => {
-  // Initialize the Slate editor with plugins
+const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
-  
-  // Track the editor value state
   const [value, setValue] = useState<Descendant[]>(defaultValue);
-  
-  // Access the editor store
-  const { setText, analysisInProgress } = useEditorStore();
+  const { analyzeText, isLoading, results, error } = useAnalysis();
 
-  // Create debounced onChange handler (500ms delay)
-  const debouncedOnChange = useCallback(
-    debounce((value: Descendant[]) => {
-      const textContent = value
-        .map((node) => Node.string(node))
-        .join('\n');
-      
-      setText(textContent);
-      
-      if (onChange) {
-        onChange(textContent);
+  const debouncedAnalyze = useCallback(
+    debounce((text: string) => {
+      if (text.trim().length > 10) {
+        console.log('[Editor] Starting analysis for:', text.substring(0, 50) + '...');
+        analyzeText(text);
       }
-    }, 500),
-    [onChange, setText]
+    }, 1000),
+    [analyzeText]
   );
 
-  // Define hotkey handlers
-  useHotkeys('mod+b', (event) => {
-    event.preventDefault();
-    const marks = SlateEditor.marks(editor) || {};
-    const isBold = marks.bold === true;
-    if (isBold) {
-      editor.removeMark('bold');
-    } else {
-      editor.addMark('bold', true);
-    }
-  });
+  const debouncedOnChange = useCallback(
+    debounce((value: Descendant[]) => {
+      const textContent = value.map((node) => Node.string(node)).join('\n');
+      if (onChange) onChange(textContent);
+      debouncedAnalyze(textContent);
+    }, 500),
+    [onChange, debouncedAnalyze]
+  );
 
-  useHotkeys('mod+i', (event) => {
-    event.preventDefault();
-    const marks = SlateEditor.marks(editor) || {};
-    const isItalic = marks.italic === true;
-    if (isItalic) {
-      editor.removeMark('italic');
-    } else {
-      editor.addMark('italic', true);
+  useEffect(() => {
+    if (results && results.length > 0) {
+      console.log('[Editor] Applying highlights for', results.length, 'matches');
+      results.forEach(match => {
+        console.log('Match:', match.ruleId, match.range.text, match.severity);
+      });
     }
-  });
-
-  useHotkeys('mod+u', (event) => {
-    event.preventDefault();
-    const marks = SlateEditor.marks(editor) || {};
-    const isUnderline = marks.underline === true;
-    if (isUnderline) {
-      editor.removeMark('underline');
-    } else {
-      editor.addMark('underline', true);
-    }
-  });
+  }, [results, editor]);
 
   return (
     <div className="editor-container">
-      {analysisInProgress && (
+      {isLoading && (
         <div className="analysis-indicator">
           <span className="loading-spinner"></span>
           Analyzing your text...
+        </div>
+      )}
+      
+      {error && (
+        <div className="error-indicator">
+          Analysis error: {error}
         </div>
       )}
       
@@ -236,8 +156,8 @@ const Editor = React.memo(({
         <Editable
           placeholder={placeholder}
           readOnly={readOnly}
-          renderElement={(props) => <Element {...props} />}
-          renderLeaf={(props) => <Leaf {...props} />}
+          renderElement={Element}
+          renderLeaf={Leaf}
           spellCheck
           autoFocus
           className="editor-editable"
@@ -259,10 +179,7 @@ const Editor = React.memo(({
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
-        .editor-editable {
-          min-height: 250px;
-          outline: none;
-        }
+        .editor-editable { min-height: 250px; outline: none; }
         
         .analysis-indicator {
           position: absolute;
@@ -278,6 +195,17 @@ const Editor = React.memo(({
           gap: 6px;
         }
         
+        .error-indicator {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          background-color: rgba(255, 0, 0, 0.8);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+        }
+        
         .loading-spinner {
           display: inline-block;
           width: 12px;
@@ -288,14 +216,11 @@ const Editor = React.memo(({
           animation: spin 1s ease-in-out infinite;
         }
         
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
 });
 
 Editor.displayName = 'Editor';
-
 export default Editor;
