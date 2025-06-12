@@ -20,6 +20,9 @@ importers:
       dotenv:
         specifier: ^16.5.0
         version: 16.5.0
+      openai:
+        specifier: ^5.3.0
+        version: 5.3.0
     devDependencies:
       prettier:
         specifier: ^3.1.0
@@ -1294,6 +1297,19 @@ packages:
     dependencies:
       lower-case: 2.0.2
       tslib: 2.8.1
+    dev: false
+
+  /openai@5.3.0:
+    resolution: {integrity: sha512-VIKmoF7y4oJCDOwP/oHXGzM69+x0dpGFmN9QmYO+uPbLFOmmnwO+x1GbsgUtI+6oraxomGZ566Y421oYVu191w==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
     dev: false
 
   /picocolors@1.1.1:
