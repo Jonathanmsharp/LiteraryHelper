@@ -54,6 +54,9 @@ importers:
       '@literaryhelper/types':
         specifier: workspace:^
         version: link:../../packages/types
+      axios:
+        specifier: ^1.9.0
+        version: 1.9.0
       drizzle-kit:
         specifier: ^0.31.1
         version: 0.31.1
