@@ -25,6 +25,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Text is required' })
     }
 
+    // Step 20: Check cache first
+    const { getAnalysisCache } = await import('../../lib/cache/RedisCache')
+    const cache = getAnalysisCache()
+    
+    const cachedResult = await cache.getCachedResult(text, userId)
+    if (cachedResult) {
+      return res.status(200).json({
+        ...cachedResult,
+        fromCache: true,
+        message: 'Analysis completed (cached)',
+      })
+    }
+
     // Step 19: Orchestrate rule processing
     const { randomUUID } = await import('crypto')
     const jobId = randomUUID()
@@ -49,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const allMatches = [...simpleMatches, ...aiMatches]
 
-    res.status(200).json({
+    const result = {
       message: 'Analysis completed',
       userId,
       sessionId,
@@ -58,7 +71,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       matchCount: allMatches.length,
       matches: allMatches,
       status: 'completed',
-    })
+      fromCache: false,
+    }
+
+    // Cache the result
+    await cache.cacheResult(text, userId, result)
+
+    res.status(200).json(result)
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Analysis failed' })
