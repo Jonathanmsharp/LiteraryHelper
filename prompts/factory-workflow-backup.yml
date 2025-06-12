@@ -78,14 +78,32 @@ Create the following inside `pages/api/`:
 
 * `analyze.ts` → POST request: orchestrates rule execution
 * `analysis/[id].ts` → GET request: return current job result
+* `rules.ts` → GET request: return all available rules
+* `feedback.ts` → POST request: store user feedback
 
-#### 🔍 TEST POINT 1: Backend Integration (After Step 20)
-**What to test:** Full backend pipeline (enqueue → process → cache → retrieve)
-**Expected:** Queue jobs execute, rules run, results cached, API returns cached data
-**How to test:** POST `/api/analyze` → poll `/api/analysis/[id]` → repeat submission verifies cache hit
-**Success criteria:** Analysis completes, cache works, no duplicate processing
+### Step 17: Implement Streaming Progress API (SSE)
 
----
+Add `pages/api/stream/[id].ts` to stream job progress using Server-Sent Events. Push rule-level analysis as they complete.
+
+### Step 18: Add Clerk Authentication
+
+Implement Clerk authentication using their SDK and middleware. Set up environment variables:
+- NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+- CLERK_SECRET_KEY
+Verify Clerk-generated session tokens. Decode and attach user data if valid, reject otherwise.
+
+### Step 19: Orchestrate Rule Processing
+
+In analyze.ts:
+- Run simple rules synchronously first
+- Enqueue AI rules in parallel
+- Store and emit partial results progressively
+- Add loading indicator UI to show analysis in progress
+- Update UI in real-time as each rule completes
+
+### Step 20: Add Redis Caching Layer
+
+Wrap analysis with cache-aside strategy: hash input text, TTL 15m, skip queue for repeat submissions.
 
 ### Step 21: Create Frontend API Client
 
@@ -99,25 +117,9 @@ Extend Slate.js rendering to highlight spans returned by each rule using severit
 
 Create UI component that shows matched rule text, reason, and suggestion. Add button to submit user feedback.
 
-#### 🔍 TEST POINT 2: Frontend User Experience (After Step 23)
-**What to test:** Complete user experience flow
-**Expected:** Type text → see live highlights → click highlight → view rule details
-**How to test:** Manual browser testing (local dev server or Vercel preview)
-**Success criteria:** Real-time highlighting, sidebar interaction, smooth UX
-
----
-
 ### Step 24: Implement Feedback API
 
 In `api/feedback.ts`, write feedback to `analysis_feedback` table. Include userId, ruleId, helpful (bool), notes.
-
-#### 🔍 TEST POINT 3: Feedback System (After Step 24)
-**What to test:** Feedback collection and storage
-**Expected:** Users can mark rules helpful/unhelpful, data persists to DB
-**How to test:** Sidebar feedback buttons → verify database storage
-**Success criteria:** Feedback stored in `analysis_feedback` table with correct metadata
-
----
 
 ### Step 25: Unit Test Rule Logic
 
@@ -126,19 +128,6 @@ Set up Jest + ts-jest. Write unit tests for all utility functions and individual
 ### Step 26: Integration Tests for API
 
 Use Supertest to test API routes: `/api/analyze`, `/api/rules`, `/api/feedback`, error cases, auth, and Redis hits.
-
-#### 🔍 TEST POINT 4: Automated Testing (After Step 26)
-**What to test:** Automated testing pipeline
-**Expected:** Unit tests + integration tests pass consistently
-**How to test:** `npm test` runs full test suite
-**Success criteria:** ≥90% coverage, all tests green, CI-ready
-
----
-
-### ⏸️ PAUSE POINT: Step 27 - Browserbase MCP Setup Required
-**Action needed:** User must set up Factory Bridge on separate machine for browser testing
-**Dependencies:** Browserbase MCP or equivalent browser automation service
-**Resume when:** Factory Bridge is configured and accessible
 
 ### Step 27: End-to-End Tests Setup
 
@@ -156,13 +145,33 @@ Run `axe-core` inside Playwright to check WCAG AA compliance on the full interfa
 
 Simulate 50 concurrent users sending 1k-word documents over 5 minutes. Assert P95 analysis < 3s.
 
-#### 🔍 TEST POINT 5: Complete Testing Suite (After Step 29)
-**What to test:** E2E, accessibility, and performance testing
-**Expected:** All tests pass, performance meets SLA (P95 < 3s)
-**How to test:** Full test suite including Playwright + Artillery
-**Success criteria:** Cross-browser compatibility, WCAG compliance, performance targets met
+### Step 30: GitHub Actions CI Pipeline
 
----
+Create `.github/workflows/ci.yml`: install deps, lint, run unit/integration tests, validate build.
+
+### Step 31: Vercel Production Deploy
+
+Ensure production branch (`main`) auto-deploys frontend project (`apps/frontend`) via Vercel settings. Attach all env vars.
+
+### Step 32: Seed Initial Rule Metadata
+
+Add script scripts/seedRules.ts that:
+- Loads config/rules.json and AI prompt templates
+- Inserts six starter rules
+- Uses sample1.md and sample1_expected.json as primary test cases
+- Creates additional test cases covering edge cases
+
+### Step 33: Environment Configuration
+
+Add `.env.example` with: `OPENAI_API_KEY`, `POSTGRES_URL`, `REDIS_URL`, `JWT_PUBLIC_KEY`. Use `vercel env pull` to populate `.env.local`.
+
+### Step 34: Add Prometheus-Compatible Metrics
+
+Expose `/api/metrics` for queue depth, GPT latency, rule timings. Use `prom-client`. Vercel analytics can scrape.
+
+### Step 35: Add Logging & Error Handling
+
+Log to `pino` in JSON format. Add API-wide error middleware that returns `application/problem+json`.
 
 ### Step 36: Security Hardening
 
@@ -183,48 +192,3 @@ Run full Playwright + Browserbase flow on latest Vercel preview. Verify JWT auth
 ### Step 40: Commit Factory Workflow YAML
 
 Write and commit `prompts/factory-workflow.yml` describing this 40-step sequence and build/test/deploy phases. Include env var names.
-
-## 🔍 TESTING PHASES & CHECKPOINTS
-
-### TEST POINT 1: Backend Integration (After Step 20)
-- **What:** Full backend pipeline (enqueue → process → cache → retrieve)
-- **Expected:** Queue jobs execute, results cached, no duplicate processing
-- **Test:** POST `/api/analyze` → poll `/api/analysis/[id]` → repeat call verifies cache
-
-### TEST POINT 2: Frontend UX (After Step 23)  
-- **What:** Complete user experience flow
-- **Expected:** Type text → highlights appear → click → sidebar shows details
-- **Test:** Manual browser testing (local/preview)
-
-### TEST POINT 3: Feedback System (After Step 24)
-- **What:** Feedback persistence 
-- **Expected:** Helpful/unhelpful stored in DB
-- **Test:** Submit feedback → verify `analysis_feedback` table
-
-### TEST POINT 4: Automated Tests (After Step 26)
-- **What:** Unit + integration test pipeline
-- **Expected:** ≥90% coverage, all tests pass
-- **Test:** `npm test` succeeds
-
-### ⏸️ PAUSE: Browserbase MCP Setup (Before Step 27)
-User must configure Factory Bridge for browser testing
-
-### TEST POINT 5: Complete Testing (After Step 29)
-- **What:** E2E + accessibility + performance
-- **Expected:** P95 < 3s, WCAG compliance
-- **Test:** Full Playwright + Artillery suite
-
-### TEST POINT 6: CI/CD Pipeline (After Step 31)
-- **What:** Automated deployment
-- **Expected:** Push → CI → tests → deploy
-- **Test:** Commit triggers auto-deployment
-
-### TEST POINT 7: Production Ready (After Step 36)
-- **What:** Monitoring + security + logging
-- **Expected:** Metrics endpoint, logs flowing, security headers
-- **Test:** Production health check
-
-### TEST POINT 8: Final Validation (After Step 39)
-- **What:** End-to-end system validation
-- **Expected:** All systems operational, docs complete
-- **Test:** Full production smoke test
