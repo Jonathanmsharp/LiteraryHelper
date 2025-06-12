@@ -3,14 +3,21 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Get user ID from header set by middleware
-    const userId = req.headers['x-auth-user-id'] as string
-    const sessionId = req.headers['x-auth-session-id'] as string
-    
+    let userId = req.headers['x-auth-user-id'] as string | undefined
+    const sessionId = req.headers['x-auth-session-id'] as string | undefined
+
+    // In development/preview we might run without Clerk – allow anonymous access
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      userId = 'anonymous'
+      console.warn(
+        '[analyze] Proceeding without authentication – NODE_ENV != production.'
+      )
+    } else {
+      console.log('Authenticated user:', userId)
     }
-    
-    console.log('Authenticated user:', userId)
 
     // Handle only POST requests for analysis
     if (req.method !== 'POST') {

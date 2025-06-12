@@ -1,33 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getAuth, clerkClient } from '@clerk/nextjs/server';
 
 /**
  * Next.js middleware for authentication and request processing
  * 
  * This middleware:
- * 1. Authenticates requests using Clerk (when configured)
+ * 1. Authenticates requests using Clerk
  * 2. Attaches user data to the request for API routes
  * 3. Redirects unauthenticated users for protected routes
  */
 export async function middleware(request: NextRequest) {
-  let userId: string | null | undefined;
-  let sessionId: string | null | undefined;
-
-  // Defensive initialisation – if Clerk isn't configured this must NOT throw
-  try {
-    const { getAuth } = await import('@clerk/nextjs/server');
-    const auth = getAuth(request);
-    userId = auth?.userId;
-    sessionId = auth?.sessionId;
-  } catch (err) {
-    // Clerk not initialised / env-vars missing → run app in public-mode
-    console.warn(
-      '[middleware] Clerk authentication unavailable, continuing without auth check –',
-      (err as Error)?.message ?? err
-    );
-    return NextResponse.next();
-  }
-  
+  // Get auth data from Clerk
+  const { userId, sessionId } = getAuth(request);
   const path = request.nextUrl.pathname;
   
   // Skip authentication for public routes
