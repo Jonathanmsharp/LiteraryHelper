@@ -4,6 +4,7 @@ import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory, HistoryEditor } from 'slate-history';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useAnalysis } from '../../lib/hooks/useAnalysis';
+import { useSidebarStore } from '../Sidebar/RuleSidebar';
 
 type CustomElement = {
   type: 'paragraph' | 'heading';
@@ -89,7 +90,16 @@ const Leaf = ({ attributes, children, leaf }: any) => {
       {...attributes}
       style={style}
       onClick={leaf.highlight ? () => {
-        console.log('Clicked highlight:', leaf.highlight);
+        // Open sidebar with rule details
+        const { openSidebar } = useSidebarStore.getState();
+        const match = {
+          ruleId: leaf.highlight.ruleId,
+          range: { start: 0, end: 0, text: leaf.text },
+          severity: leaf.highlight.severity,
+          suggestion: 'Click for details',
+          explanation: 'This is a ' + leaf.highlight.severity + ' level issue.',
+        };
+        openSidebar(match);
       } : undefined}
     >
       {children}
