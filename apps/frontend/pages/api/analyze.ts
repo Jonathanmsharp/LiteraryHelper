@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // If a token is supplied, prefer the real user id
         try {
           const payload = await verifyToken(tokenMatch[1])
-          userId = payload.userId
+          userId = (payload as any).userId
           console.log('[analyze] Demo mode: authenticated demo request for', userId)
         } catch {
           userId = 'demo-user'
@@ -45,7 +45,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       try {
         const payload = await verifyToken(tokenMatch[1])
-        userId = payload.userId
+        // verifyToken may return either a JWTPayload or a custom object;
+        // use a broad assertion to satisfy TypeScript without over-narrowing.
+        userId = (payload as any).userId
       } catch {
         return res.status(401).json({ error: 'Unauthorized – invalid token' })
       }

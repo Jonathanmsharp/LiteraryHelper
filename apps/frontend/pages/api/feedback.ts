@@ -22,8 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (tokenMatch) {
         // Prefer authenticated user if token provided
         try {
-          const payload = verifyToken(tokenMatch[1])
-          userId = payload.userId
+          const payload = await verifyToken(tokenMatch[1])
+          userId = (payload as any).userId
           console.log('[feedback] Demo mode: authenticated demo request for', userId)
         } catch {
           userId = 'demo-user'
@@ -39,8 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized – missing Bearer token' })
       }
       try {
-        const payload = verifyToken(tokenMatch[1])
-        userId = payload.userId
+        const payload = await verifyToken(tokenMatch[1])
+        userId = (payload as any).userId
       } catch {
         return res.status(401).json({ error: 'Unauthorized – invalid token' })
       }

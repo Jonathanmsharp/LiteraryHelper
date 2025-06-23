@@ -64,7 +64,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const wss = getWebSocketServer(server);
 
   // Handle upgrade
-  server.on('upgrade', (request: any, socket: any, head: any) => {
+  server.on('upgrade', async (request: any, socket: any, head: any) => {
     // Extract token from URL query parameters
     const url = new URL(request.url, `http://${request.headers.host}`);
     const token = url.searchParams.get('token');
@@ -77,8 +77,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Verify token
     try {
-      const payload = verifyToken(token);
-      const userId = payload.userId;
+      // verifyToken may return a Promise<JWTPayload>; await it to safely access fields
+      const payload = await verifyToken(token);
+      const userId = (payload as any).userId;
       const sessionId = url.searchParams.get('sessionId') || undefined;
 
       // Upgrade the connection
