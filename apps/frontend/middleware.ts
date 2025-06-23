@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import config from './lib/env';
 
 /**
  * Next.js middleware for authentication and request processing
@@ -12,20 +11,16 @@ import config from './lib/env';
  * 4. Redirects unauthenticated users for protected routes
  */
 export async function middleware(request: NextRequest) {
-  let userId: string | null | undefined;
-  let sessionId: string | null | undefined;
-  
-  // Check if demo mode is enabled
-  let demoMode = false;
   try {
-    demoMode = config.demo.enableDemoMode || config.demo.allowAnonymousAccess;
+    let userId: string | null | undefined;
+    let sessionId: string | null | undefined;
+
+    // Demo-mode flags are read directly from env to avoid heavyweight config import
+    const demoMode =
+      process.env.ENABLE_DEMO_MODE === 'true' ||
+      process.env.ALLOW_ANONYMOUS_ACCESS === 'true';
+
     console.log(`[middleware] Demo mode: ${demoMode ? 'ENABLED' : 'DISABLED'}`);
-  } catch (configErr) {
-    console.warn(
-      '[middleware] Error loading config, falling back to auth-required mode:',
-      (configErr as Error)?.message ?? configErr
-    );
-  }
 
   // If demo mode is enabled, skip authentication checks
   if (demoMode) {
@@ -101,6 +96,12 @@ export async function middleware(request: NextRequest) {
   
   // Allow authenticated requests to continue
   return NextResponse.next();
+
+  } catch (err) {
+    // In case of any unexpected error, do not block the request chain
+    console.error('[middleware] Unexpected error – allowing request to proceed:', err);
+    return NextResponse.next();
+  }
 }
 
 // Configure which routes this middleware will run on
