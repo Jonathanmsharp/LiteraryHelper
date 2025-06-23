@@ -1,18 +1,49 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import config from './lib/env';
 
 /**
  * Next.js middleware for authentication and request processing
  * 
  * This middleware:
- * 1. Authenticates requests using Clerk (when configured)
- * 2. Attaches user data to the request for API routes
- * 3. Redirects unauthenticated users for protected routes
+ * 1. Checks if demo mode is enabled
+ * 2. Authenticates requests using Clerk (when configured and demo mode is disabled)
+ * 3. Attaches user data to the request for API routes
+ * 4. Redirects unauthenticated users for protected routes
  */
 export async function middleware(request: NextRequest) {
   let userId: string | null | undefined;
   let sessionId: string | null | undefined;
+  
+  // Check if demo mode is enabled
+  let demoMode = false;
+  try {
+    demoMode = config.demo.enableDemoMode || config.demo.allowAnonymousAccess;
+    console.log(`[middleware] Demo mode: ${demoMode ? 'ENABLED' : 'DISABLED'}`);
+  } catch (configErr) {
+    console.warn(
+      '[middleware] Error loading config, falling back to auth-required mode:',
+      (configErr as Error)?.message ?? configErr
+    );
+  }
 
+  // If demo mode is enabled, skip authentication checks
+  if (demoMode) {
+    console.log('[middleware] Demo mode active - allowing anonymous access');
+    
+    // For API routes in demo mode, we still want to set a demo user ID
+    const path = request.nextUrl.pathname;
+    if (path.startsWith('/api')) {
+      const response = NextResponse.next();
+      response.headers.set('x-auth-user-id', 'demo-user');
+      response.headers.set('x-auth-session-id', 'demo-session');
+      return response;
+    }
+    
+    return NextResponse.next();
+  }
+
+  // Demo mode is disabled, proceed with Clerk authentication
   // Defensive initialisation – if Clerk isn't configured this must NOT throw
   try {
     const { getAuth } = await import('@clerk/nextjs/server');
