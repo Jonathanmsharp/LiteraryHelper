@@ -83,3 +83,12 @@ export function getAnalysisCache(): AnalysisCache {
   }
   return globalCache;
 }
+
+// ---------------------------------------------------------------------------
+// Provide an explicit named export so callers can use:
+//   import { AnalysisCache } from '.../RedisCache';
+// Even though `export class AnalysisCache` already works, some bundlers or
+// transpiled code paths (e.g. Jest with `ts-jest`) may treat a class export
+// differently than a re-export.  Adding this line guarantees the symbol is
+// always available for destructuring imports.
+// ---------------------------------------------------------------------------

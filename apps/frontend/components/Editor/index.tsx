@@ -1,10 +1,35 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor, Element as SlateElement } from 'slate';
+import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor, Element as SlateElement, Range, Transforms, Path } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory, HistoryEditor } from 'slate-history';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useAnalysis } from '../../lib/hooks/useAnalysis';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
+
+// Enhanced types for analysis results
+interface TextRange {
+  start: number;
+  end: number;
+  text: string;
+}
+
+interface AnalysisMatch {
+  id: string;
+  ruleId: string;
+  start: number;
+  end: number;
+  text: string;
+  suggestion: string;
+  explanation: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
+interface AnalysisResult {
+  jobId: string;
+  matches: AnalysisMatch[];
+  status: 'processing' | 'complete';
+  progress: number;
+}
 
 type CustomElement = {
   type: 'paragraph' | 'heading';
@@ -20,7 +45,10 @@ type CustomText = {
   highlight?: {
     color: string;
     ruleId: string;
+    matchId: string;
     severity: 'error' | 'warning' | 'info';
+    suggestion: string;
+    explanation: string;
   };
 };
 
@@ -93,11 +121,12 @@ const Leaf = ({ attributes, children, leaf }: any) => {
         // Open sidebar with rule details
         const { openSidebar } = useSidebarStore.getState();
         const match = {
+          id: leaf.highlight.matchId,
           ruleId: leaf.highlight.ruleId,
           range: { start: 0, end: 0, text: leaf.text },
           severity: leaf.highlight.severity,
-          suggestion: 'Click for details',
-          explanation: 'This is a ' + leaf.highlight.severity + ' level issue.',
+          suggestion: leaf.highlight.suggestion,
+          explanation: leaf.highlight.explanation,
         };
         openSidebar(match);
       } : undefined}
@@ -106,6 +135,88 @@ const Leaf = ({ attributes, children, leaf }: any) => {
     </span>
   );
 };
+
+// Helper function to convert absolute text positions to Slate path and offset
+function getSlateLocation(editor: SlateEditor, offset: number): [Path, number] | null {
+  let currentOffset = 0;
+  
+  for (const [node, path] of SlateEditor.nodes(editor, {
+    at: [],
+    match: (n) => Text.isText(n),
+  })) {
+    const text = node as Text;
+    const textLength = text.text.length;
+    
+    if (currentOffset <= offset && offset <= currentOffset + textLength) {
+      return [path, offset - currentOffset];
+    }
+    
+    currentOffset += textLength;
+  }
+  
+  return null;
+}
+
+// Helper to clear all highlights from the editor
+function clearHighlights(editor: SlateEditor): void {
+  // Remove all highlight marks from the entire document
+  for (const [node, path] of SlateEditor.nodes(editor, {
+    at: [],
+    match: (n) => Text.isText(n) && n.highlight !== undefined,
+  })) {
+    Transforms.unsetNodes(editor, 'highlight', { at: path });
+  }
+}
+
+// Apply highlights to the editor based on analysis results
+function applyHighlights(editor: SlateEditor, matches: AnalysisMatch[]): void {
+  // 1. Clear existing highlights
+  clearHighlights(editor);
+
+  // 2. Process matches from earliest → latest to avoid range clashes
+  const sorted = [...matches].sort((a, b) => a.start - b.start);
+
+  sorted.forEach((match) => {
+    const startLoc = getSlateLocation(editor, match.start);
+    const endLoc   = getSlateLocation(editor, match.end);
+
+    if (!startLoc || !endLoc) {
+      console.warn('[Editor] Unable to resolve Slate range for match', match);
+      return;
+    }
+
+    const range: Range = {
+      anchor: { path: startLoc[0], offset: startLoc[1] },
+      focus:  { path: endLoc[0],   offset: endLoc[1] }
+    };
+
+    // Apply highlight by setting a custom Text property.
+    // `split: true` ensures only the exact span receives the mark.
+    Transforms.setNodes(
+      editor,
+      {
+        highlight: {
+          ruleId:     match.ruleId,
+          matchId:    match.id,
+          severity:   match.severity,
+          suggestion: match.suggestion,
+          explanation: match.explanation,
+          color:
+            match.severity === 'error'
+              ? 'red'
+              : match.severity === 'warning'
+              ? 'orange'
+              : 'blue',
+        },
+      },
+      {
+        at: range,
+        match: Text.isText,
+        split: true,
+      }
+    );
+  });
+}
 
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
@@ -131,14 +242,34 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     [onChange, debouncedAnalyze]
   );
 
+  // Apply highlights when analysis results change
   useEffect(() => {
     if (results && results.length > 0) {
       console.log('[Editor] Applying highlights for', results.length, 'matches');
-      results.forEach(match => {
-        console.log('Match:', match.ruleId, match.range.text, match.severity);
-      });
+      
+      // We need to use ReactEditor.focus to ensure we can modify the editor
+      ReactEditor.focus(editor);
+      
+      // Apply highlights to the editor
+      const analysisMatches: AnalysisMatch[] = results.map((match, index) => ({
+        // Generate a stable id based on rule + index (API does not supply one)
+        id: `${match.ruleId}-${index}`,
+        ruleId: match.ruleId,
+        start: match.range.start,
+        end: match.range.end,
+        text: match.range.text,
+        suggestion: match.suggestion ?? '',
+        explanation: match.explanation ?? '',
+        severity: match.severity,
+      }));
+
+      applyHighlights(editor, analysisMatches);
+      
+      // Force a re-render of the editor
+      const currentValue = [...value];
+      setValue(currentValue);
     }
-  }, [results, editor]);
+  }, [results, editor, value]);
 
   return (
     <div className="editor-container">
