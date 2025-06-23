@@ -14,7 +14,6 @@ import path from 'path';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
-import colors from 'colors/safe';
 
 // Import schema (adjust path as needed based on relative location)
 import { rules, RuleType, RuleSeverity } from '../apps/frontend/db/schema';
@@ -40,7 +39,7 @@ async function loadPromptTemplate(filename: string): Promise<string> {
     const promptPath = path.join(process.cwd(), 'config', 'ai-prompts', filename);
     return await fs.readFile(promptPath, 'utf-8');
   } catch (error) {
-    console.error(colors.red(`Error loading prompt template ${filename}:`), error);
+    console.error(`Error loading prompt template ${filename}:`, error);
     throw new Error(`Failed to load prompt template: ${filename}`);
   }
 }
@@ -52,14 +51,14 @@ function getDbConnection() {
   const connectionString = process.env.POSTGRES_URL || 
     'postgresql://postgres:postgres@localhost:5432/literaryhelper';
   
-  console.log(colors.blue('Connecting to database...'));
+  console.log('Connecting to database...');
   
   try {
     const pool = new Pool({ connectionString });
     const db = drizzle(pool);
     return { pool, db };
   } catch (error) {
-    console.error(colors.red('Failed to connect to database:'), error);
+    console.error('Failed to connect to database:', error);
     throw new Error('Database connection failed');
   }
 }
@@ -68,7 +67,7 @@ function getDbConnection() {
  * Seed rules into the database
  */
 export async function seedRules(): Promise<void> {
-  console.log(colors.green('Starting rule seeding process...'));
+  console.log('Starting rule seeding process...');
   
   // Get database connection
   const { pool, db } = getDbConnection();
@@ -144,7 +143,7 @@ export async function seedRules(): Promise<void> {
     ];
     
     // Insert or update rules
-    console.log(colors.blue('Seeding rules...'));
+    console.log('Seeding rules...');
     
     for (const rule of ruleData) {
       try {
@@ -167,7 +166,7 @@ export async function seedRules(): Promise<void> {
             })
             .where(eq(rules.id, rule.id));
           
-          console.log(colors.yellow(`Updated existing rule: ${rule.id}`));
+          console.log(`Updated existing rule: ${rule.id}`);
         } else {
           // Insert new rule
           await db.insert(rules).values({
@@ -184,39 +183,33 @@ export async function seedRules(): Promise<void> {
             updatedAt: new Date(),
           });
           
-          console.log(colors.green(`Created new rule: ${rule.id}`));
+          console.log(`Created new rule: ${rule.id}`);
         }
       } catch (error) {
-        console.error(colors.red(`Failed to seed rule ${rule.id}:`), error);
+        console.error(`Failed to seed rule ${rule.id}:`, error);
       }
     }
     
     // Verify seeded rules
     const seededRules = await db.select().from(rules);
-    console.log(colors.green(`Successfully seeded ${seededRules.length} rules:`));
+    console.log(`Successfully seeded ${seededRules.length} rules:`);
     
     seededRules.forEach(rule => {
-      const severityColor = 
-        rule.severity === 'error' ? colors.red :
-        rule.severity === 'warning' ? colors.yellow :
-        colors.blue;
-      
       console.log(
-        `- ${colors.bold(rule.name)} (${rule.id}): ` +
-        `${severityColor(rule.severity)} | ${rule.type === 'simple' ? 'Regex' : 'AI'}`
+        `- ${rule.name} (${rule.id}): ${rule.severity} | ${rule.type === 'simple' ? 'Regex' : 'AI'}`
       );
     });
     
   } catch (error) {
-    console.error(colors.red('Rule seeding failed:'), error);
+    console.error('Rule seeding failed:', error);
     throw error;
   } finally {
     // Close database connection
     await pool.end();
-    console.log(colors.blue('Database connection closed.'));
+    console.log('Database connection closed.');
   }
   
-  console.log(colors.green('Rule seeding completed successfully!'));
+  console.log('Rule seeding completed successfully!');
 }
 
 /**
@@ -227,17 +220,17 @@ if (require.main === module) {
   try {
     require('dotenv').config();
   } catch (error) {
-    console.warn(colors.yellow('dotenv not found, using default environment variables.'));
+    console.warn('dotenv not found, using default environment variables.');
   }
   
   // Execute seeding
   seedRules()
     .then(() => {
-      console.log(colors.green('✅ Seed script completed successfully!'));
+      console.log('✅ Seed script completed successfully!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error(colors.red('❌ Seed script failed:'), error);
+      console.error('❌ Seed script failed:', error);
       process.exit(1);
     });
 }
