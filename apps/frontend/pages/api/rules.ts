@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs/promises';
 import path from 'path';
+import { verifyToken } from '../../lib/verifyToken';
+import config from '../../lib/env';
 
 interface RuleMeta {
   id: string;
@@ -16,6 +18,41 @@ const CACHE_TTL = 60_000;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    /* ------------------------------------------------------------------ */
+    /* Authentication                                                    */
+    /* ------------------------------------------------------------------ */
+    const demoMode =
+      config.demo.enableDemoMode ||
+      config.demo.allowAnonymousAccess ||
+      (!config.jwt.publicKey && !config.jwt.jwksUrl);
+
+    const authHeader = req.headers.authorization || '';
+    const tokenMatch = authHeader.match(/^Bearer (.+)$/i);
+
+    if (demoMode) {
+      // Demo / anonymous mode – token optional
+      if (tokenMatch) {
+        try {
+          verifyToken(tokenMatch[1]);
+          console.log('[rules] Demo mode: authenticated request');
+        } catch {
+          console.warn('[rules] Demo mode: invalid token ignored');
+        }
+      } else {
+        console.log('[rules] Demo mode: anonymous request allowed');
+      }
+    } else {
+      // Production mode – strict JWT auth
+      if (!tokenMatch) {
+        return res.status(401).json({ error: 'Unauthorized – missing Bearer token' });
+      }
+      try {
+        verifyToken(tokenMatch[1]); // We don't use the payload here, only validation
+      } catch {
+        return res.status(401).json({ error: 'Unauthorized – invalid token' });
+      }
+    }
+
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return res.status(405).json({ error: 'Method not allowed' });
     }

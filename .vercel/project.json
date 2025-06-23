@@ -1,0 +1,75 @@
+{
+  "projectId": "prj_literaryhelper",
+  "orgId": "team_literaryhelper",
+  "name": "literary-helper",
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=frontend...",
+  "outputDirectory": "apps/frontend/.next",
+  "installCommand": "pnpm install",
+  "devCommand": "cd ../.. && pnpm turbo run dev --filter=frontend...",
+  "rootDirectory": "apps/frontend",
+  "public": false,
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "development": true,
+      "preview": true
+    }
+  },
+  "functions": {
+    "apps/frontend/pages/api/**/*": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "OPENAI_API_KEY": {
+      "type": "encrypted",
+      "description": "OpenAI API key for AI rule processing"
+    },
+    "LLM_PROVIDER": {
+      "type": "string", 
+      "default": "openai",
+      "description": "Provider for language models (openai, anthropic, etc.)"
+    },
+    "POSTGRES_URL": {
+      "type": "encrypted",
+      "description": "PostgreSQL connection string for data persistence"
+    },
+    "REDIS_URL": {
+      "type": "encrypted",
+      "description": "Redis connection string for caching and queues"
+    },
+    "JWT_PUBLIC_KEY": {
+      "type": "encrypted",
+      "description": "Public key for JWT verification (RS256)"
+    },
+    "JWT_JWKS_URL": {
+      "type": "string",
+      "description": "URL to JWKS endpoint for JWT verification"
+    },
+    "JWT_ISSUER": {
+      "type": "string",
+      "description": "Expected issuer for JWT tokens"
+    },
+    "NODE_ENV": {
+      "type": "string",
+      "default": "production"
+    },
+    "ENABLE_DEMO_MODE": {
+      "type": "string",
+      "default": "true",
+      "description": "Enable demo mode for anonymous access"
+    },
+    "ALLOW_ANONYMOUS_ACCESS": {
+      "type": "string",
+      "default": "true",
+      "description": "Allow requests without authentication"
+    },
+    "DEMO_USER_ID": {
+      "type": "string",
+      "default": "demo-user",
+      "description": "User ID for anonymous demo requests"
+    }
+  }
+}

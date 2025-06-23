@@ -1,0 +1,290 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    branches: [main]
+    types:
+      - completed
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      rollback:
+        description: 'Rollback to previous deployment'
+        type: boolean
+        default: false
+      deploymentId:
+        description: 'Deployment ID to rollback to'
+        required: false
+        type: string
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  FRONTEND_DIR: apps/frontend
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview-deploy:
+    name: 🔍 Preview Deployment
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏗️ Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: 📥 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔨 Build
+        run: pnpm turbo build --filter=frontend...
+
+      - name: 🔧 Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: 📤 Pull Vercel Environment Variables
+        run: |
+          cd ${{ env.FRONTEND_DIR }}
+          vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: 🚀 Deploy to Vercel (Preview)
+        id: deploy-preview
+        run: |
+          cd ${{ env.FRONTEND_DIR }}
+          DEPLOYMENT_URL=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --no-wait)
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+
+      - name: 🔍 Wait for Preview Deployment
+        run: |
+          echo "Waiting for preview deployment to complete..."
+          sleep 30
+          curl -s -o /dev/null -w "%{http_code}" ${{ steps.deploy-preview.outputs.deployment_url }} | grep -q 200
+          if [ $? -ne 0 ]; then
+            echo "Preview deployment failed or not ready"
+            exit 1
+          fi
+          echo "Preview deployment is ready!"
+
+      - name: 🔗 Comment Preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { issue: { number: issue_number }, repo: { owner, repo } } = context;
+            github.rest.issues.createComment({
+              issue_number,
+              owner,
+              repo,
+              body: `🚀 Preview deployment is ready! Visit: ${{ steps.deploy-preview.outputs.deployment_url }}`
+            });
+
+      - name: 🧪 Run Smoke Tests on Preview
+        run: |
+          echo "Running smoke tests on preview deployment..."
+          curl -s -f ${{ steps.deploy-preview.outputs.deployment_url }} > /dev/null
+          if [ $? -ne 0 ]; then
+            echo "Smoke test failed!"
+            exit 1
+          fi
+          echo "Smoke tests passed!"
+
+  production-deploy:
+    name: 🚀 Production Deployment
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && !inputs.rollback)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: ${{ steps.deploy-production.outputs.deployment_url }}
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏗️ Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: 📥 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔨 Build
+        run: pnpm turbo build --filter=frontend...
+
+      - name: 🔧 Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: 📤 Pull Vercel Environment Variables
+        run: |
+          cd ${{ env.FRONTEND_DIR }}
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: 🚀 Deploy to Vercel (Production)
+        id: deploy-production
+        run: |
+          cd ${{ env.FRONTEND_DIR }}
+          DEPLOYMENT_URL=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "deployment_id=$(vercel inspect --token=${{ secrets.VERCEL_TOKEN }} $DEPLOYMENT_URL --output=json | jq -r '.id')" >> $GITHUB_OUTPUT
+
+      - name: 💾 Store Deployment ID
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const deploymentId = '${{ steps.deploy-production.outputs.deployment_id }}';
+            const deploymentUrl = '${{ steps.deploy-production.outputs.deployment_url }}';
+            const timestamp = new Date().toISOString();
+            
+            let deployments = [];
+            try {
+              deployments = JSON.parse(fs.readFileSync('deployments.json', 'utf8'));
+            } catch (e) {
+              console.log('No existing deployments file, creating new one');
+            }
+            
+            deployments.unshift({ id: deploymentId, url: deploymentUrl, timestamp });
+            if (deployments.length > 5) deployments = deployments.slice(0, 5);
+            
+            fs.writeFileSync('deployments.json', JSON.stringify(deployments, null, 2));
+            
+            const artifact = require('@actions/artifact');
+            const artifactClient = artifact.create();
+            await artifactClient.uploadArtifact('deployments', ['deployments.json'], '.');
+
+      - name: 🔍 Wait for Production Deployment
+        run: |
+          echo "Waiting for production deployment to complete..."
+          sleep 60
+          curl -s -o /dev/null -w "%{http_code}" ${{ steps.deploy-production.outputs.deployment_url }} | grep -q 200
+          if [ $? -ne 0 ]; then
+            echo "Production deployment failed or not ready"
+            exit 1
+          fi
+          echo "Production deployment is ready!"
+
+      - name: 🧪 Run Smoke Tests
+        run: |
+          echo "Running smoke tests on production deployment..."
+          curl -s -f ${{ steps.deploy-production.outputs.deployment_url }} > /dev/null
+          if [ $? -ne 0 ]; then
+            echo "Smoke test failed!"
+            exit 1
+          fi
+          echo "Smoke tests passed!"
+
+      - name: 📢 Send Deployment Notification
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "🚀 *Production Deployment Successful*\nURL: ${{ steps.deploy-production.outputs.deployment_url }}\nDeployment ID: ${{ steps.deploy-production.outputs.deployment_id }}\nCommit: ${{ github.sha }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' }}
+
+  rollback:
+    name: ⏮️ Rollback Deployment
+    if: github.event_name == 'workflow_dispatch' && inputs.rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: ⏮️ Rollback to Previous Deployment
+        id: rollback
+        run: |
+          if [ -n "${{ github.event.inputs.deploymentId }}" ]; then
+            DEPLOYMENT_ID="${{ github.event.inputs.deploymentId }}"
+          else
+            # Download latest deployments artifact
+            artifact_download_url=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/artifacts?name=deployments" | \
+              jq -r '.artifacts[0].archive_download_url')
+            
+            if [ "$artifact_download_url" != "null" ]; then
+              curl -s -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "$artifact_download_url" -o deployments.zip
+              unzip -o deployments.zip
+              DEPLOYMENT_ID=$(jq -r '.[1].id' deployments.json)
+            else
+              echo "No previous deployments found"
+              exit 1
+            fi
+          fi
+          
+          echo "Rolling back to deployment ID: $DEPLOYMENT_ID"
+          vercel rollback --token=${{ secrets.VERCEL_TOKEN }} $DEPLOYMENT_ID
+          
+          # Get URL of the rollback deployment
+          ROLLBACK_URL=$(vercel inspect --token=${{ secrets.VERCEL_TOKEN }} $DEPLOYMENT_ID --output=json | jq -r '.url')
+          echo "rollback_url=https://$ROLLBACK_URL" >> $GITHUB_OUTPUT
+
+      - name: 🔍 Wait for Rollback Deployment
+        run: |
+          echo "Waiting for rollback deployment to complete..."
+          sleep 30
+          curl -s -o /dev/null -w "%{http_code}" ${{ steps.rollback.outputs.rollback_url }} | grep -q 200
+          if [ $? -ne 0 ]; then
+            echo "Rollback deployment failed or not ready"
+            exit 1
+          fi
+          echo "Rollback deployment is ready!"
+
+      - name: 🧪 Run Smoke Tests on Rollback
+        run: |
+          echo "Running smoke tests on rollback deployment..."
+          curl -s -f ${{ steps.rollback.outputs.rollback_url }} > /dev/null
+          if [ $? -ne 0 ]; then
+            echo "Smoke test failed!"
+            exit 1
+          fi
+          echo "Smoke tests passed!"
+
+      - name: 📢 Send Rollback Notification
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "⏮️ *Rollback Deployment Successful*\nURL: ${{ steps.rollback.outputs.rollback_url }}\nTriggered by: ${{ github.actor }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        if: ${{ success() && secrets.SLACK_WEBHOOK_URL != '' }}
