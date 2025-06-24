@@ -66,15 +66,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Create feedback record
     const feedbackRecord = {
-      id: require('crypto').randomUUID(),
+      // id and timestamps are handled automatically by the DB
       userId,
-      sessionId,
+      analysisId: 1, // TODO: replace with real analysisId once available in request
       ruleId,
       matchId,
       helpful: isHelpful,
-      comment: comment || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      notes: comment || null,
     };
 
     /* ------------------------------------------------------------------ */
@@ -85,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // the API route is actually invoked.
       const { Pool } = await import('pg');
       const { drizzle } = await import('drizzle-orm/node-postgres');
-      const { analysisFeedback } = await import('../../db/schema');
+      const { feedback } = await import('../../db/schema');
 
       // Singleton pool on globalThis to avoid exhausting connection limit
       const g = globalThis as any;
@@ -98,9 +96,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const db = drizzle(g.__feedbackPool);
       const inserted = await db
-        .insert(analysisFeedback)
+        .insert(feedback)
         .values(feedbackRecord)
-        .returning({ id: analysisFeedback.id, createdAt: analysisFeedback.createdAt });
+        .returning({ id: feedback.id, createdAt: feedback.createdAt });
 
       const insertedRow = inserted[0];
 
