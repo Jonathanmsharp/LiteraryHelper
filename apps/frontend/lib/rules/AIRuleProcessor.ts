@@ -112,7 +112,9 @@ export class AIRuleProcessor {
    * Create a new AI rule processor
    */
   constructor(configPath?: string) {
-    const defaultConfigPath = path.resolve(__dirname, '../../../../config/rules.json');
+    // Resolve from the current working directory so it works
+    // in local dev and serverless (e.g. Vercel) environments.
+    const defaultConfigPath = path.resolve(process.cwd(), 'config/rules.json');
     this.loadRules(configPath || defaultConfigPath);
   }
 

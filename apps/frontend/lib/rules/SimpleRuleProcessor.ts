@@ -175,7 +175,9 @@ export class SimpleRuleProcessor {
    */
   constructor(configPath?: string) {
     // Default config path is relative to this file
-    const defaultConfigPath = path.resolve(__dirname, '../../../../config/rules.json');
+    // Use process.cwd() so the path resolves correctly both locally
+    // and in serverless environments like Vercel (working dir = repo root)
+    const defaultConfigPath = path.resolve(process.cwd(), 'config/rules.json');
     
     // Load rules from the config file
     this.loadRules(configPath || defaultConfigPath);
