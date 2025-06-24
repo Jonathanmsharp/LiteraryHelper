@@ -1,8 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "npm run vercel-install",
   "framework": "nextjs",
+  "rootDirectory": "apps/frontend",
   "outputDirectory": ".next",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/$1" }
