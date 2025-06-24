@@ -42,17 +42,6 @@ else
     pnpm install --no-frozen-lockfile
 fi
 
-# Ensure the TypeScript compiler is available
-if ! command -v tsc &> /dev/null; then
-    echo -e "${YELLOW}TypeScript compiler not found. Installing globally...${NC}"
-    if [ "$USE_NPM" = true ]; then
-        npm install -g typescript
-    else
-        pnpm add -g typescript
-    fi
-    echo -e "${GREEN}TypeScript compiler installed.${NC}"
-fi
-
 # Build the types package first
 echo -e "${YELLOW}Building @literaryhelper/types package...${NC}"
 if [ "$USE_NPM" = true ]; then
