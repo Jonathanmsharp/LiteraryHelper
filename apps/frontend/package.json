@@ -8,9 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "vercel-install": "pnpm install --no-frozen-lockfile",
-    "vercel-build": "next build"
+    "start": "next start"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",

@@ -1,24 +1,5 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "rootDirectory": "apps/frontend",
-  "outputDirectory": ".next",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/$1" }
-  ],
-  "github": {
-    "silent": true,
-    "autoAlias": true
-  },
-  "functions": {
-    "api/**/*": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "env": {
-    "NODE_ENV": "production",
-    "ENABLE_DEMO_MODE": "true",
-    "ALLOW_ANONYMOUS_ACCESS": "true"
-  }
+  "rootDirectory": "apps/frontend"
 }
