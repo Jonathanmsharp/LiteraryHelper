@@ -1,7 +1,7 @@
 // /config/rules.json
 [
   {
-    "id": "passive‑voice",
+    "id": "passive-voice",
     "name": "Passive Voice",
     "description": "Flags sentences written in the passive voice.",
     "type": "simple",
@@ -9,7 +9,7 @@
     "pattern": "\\b(was|were|is|are|been|be)\\b\\s+\\w+ed\\b"
   },
   {
-    "id": "adverb‑overuse",
+    "id": "adverb-overuse",
     "name": "Adverb Over‑use",
     "description": "Detects -ly adverbs preceding verbs.",
     "type": "simple",
@@ -17,7 +17,7 @@
     "pattern": "\\b\\w+ly\\b\\s+\\w+"
   },
   {
-    "id": "very‑weakener",
+    "id": "very-weakener",
     "name": "\"Very\" Weakener",
     "description": "Discourage use of the word \"very\" as an intensifier.",
     "type": "simple",
@@ -25,7 +25,7 @@
     "pattern": "\\bvery\\b"
   },
   {
-    "id": "tone‑consistency",
+    "id": "tone-consistency",
     "name": "Tone Consistency",
     "description": "Ensure tone stays formal‑friendly throughout.",
     "type": "ai",
@@ -33,7 +33,7 @@
     "promptTemplate": "You are a tone‑consistency checker. Highlight any sentence that deviates from a formal‑friendly tone..."
   },
   {
-    "id": "claims‑without‑evidence",
+    "id": "claims-without-evidence",
     "name": "Claims Without Evidence",
     "description": "Find factual claims lacking citations or data.",
     "type": "ai",
@@ -41,7 +41,7 @@
     "promptTemplate": "Identify statements that present facts or figures without a supporting citation..."
   },
   {
-    "id": "inclusive‑language",
+    "id": "inclusive-language",
     "name": "Inclusive Language",
     "description": "Flag non‑inclusive or biased terms and suggest alternatives.",
     "type": "ai",
