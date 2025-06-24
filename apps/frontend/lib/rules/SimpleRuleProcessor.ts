@@ -1,7 +1,42 @@
 import fs from 'fs';
 import path from 'path';
 import { BaseRule } from './BaseRule';
-import { Rule, RuleMatch, RuleSeverity, SimpleRule as ISimpleRule } from '@literaryhelper/types';
+
+// ---------------------------------------------------------------------------
+// Inline type definitions (avoids monorepo workspace dependency)
+// ---------------------------------------------------------------------------
+
+export type RuleSeverity = 'info' | 'warning' | 'error';
+export type RuleType = 'simple' | 'ai';
+
+export interface BaseRuleInterface {
+  id: string;
+  name: string;
+  description: string;
+  type: RuleType;
+  severity: RuleSeverity;
+}
+
+export interface ISimpleRule extends BaseRuleInterface {
+  type: 'simple';
+  pattern: string;
+}
+
+export interface TextRange {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface RuleMatch {
+  ruleId: string;
+  range: TextRange;
+  suggestion?: string;
+  explanation?: string;
+  severity: RuleSeverity;
+}
+
+export type Rule = ISimpleRule; // For this processor we only care about simple rules
 
 /**
  * Implementation of a simple rule that uses regex pattern matching
@@ -31,7 +66,7 @@ export class SimpleRule extends BaseRule {
     
     try {
       // Compile the regex pattern with global and case-insensitive flags
-      this.regex = new RegExp(pattern, 'gi');
+      this.regex = new RegExp(this.pattern, 'gi');
     } catch (error) {
       throw new Error(`Invalid regex pattern for rule ${id}: ${error instanceof Error ? error.message : String(error)}`);
     }

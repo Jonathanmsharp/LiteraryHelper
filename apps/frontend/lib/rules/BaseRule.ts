@@ -1,4 +1,46 @@
-import { BaseRule as IBaseRule, Rule, RuleMatch, RuleSeverity, SimpleRule as ISimpleRule, AIRule as IAIRule } from '@literaryhelper/types';
+
+// ---------------------------------------------------------------------------
+// Inline type definitions (avoids monorepo workspace dependency)
+// ---------------------------------------------------------------------------
+
+export type RuleSeverity = 'info' | 'warning' | 'error';
+export type RuleType = 'simple' | 'ai';
+
+export interface TextRange {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface RuleMatch {
+  ruleId: string;
+  range: TextRange;
+  suggestion?: string;
+  explanation?: string;
+  severity: RuleSeverity;
+}
+
+export interface BaseRuleInterface {
+  id: string;
+  name: string;
+  description: string;
+  type: RuleType;
+  severity: RuleSeverity;
+}
+
+export interface ISimpleRule extends BaseRuleInterface {
+  type: 'simple';
+  pattern: string;
+}
+
+export interface IAIRule extends BaseRuleInterface {
+  type: 'ai';
+  promptTemplate: string;
+  model?: string;
+  provider?: string;
+}
+
+export type Rule = ISimpleRule | IAIRule;
 
 /**
  * Base error class for rule execution errors
@@ -17,7 +59,7 @@ export class RuleExecutionError extends Error {
 /**
  * Abstract base class for all rule implementations
  */
-export abstract class BaseRule implements IBaseRule {
+export abstract class BaseRule implements BaseRuleInterface {
   /**
    * Create a new rule
    * @param id Unique identifier for the rule

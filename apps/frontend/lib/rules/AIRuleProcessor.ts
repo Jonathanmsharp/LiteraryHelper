@@ -1,7 +1,44 @@
 import fs from 'fs';
 import path from 'path';
 import { BaseRule, RuleExecutionError } from './BaseRule';
-import { Rule, RuleMatch, RuleSeverity, AIRule as IAIRule } from '@literaryhelper/types';
+
+// ---------------------------------------------------------------------------
+// Inline type definitions (avoids monorepo workspace dependency)
+// ---------------------------------------------------------------------------
+export type RuleSeverity = 'info' | 'warning' | 'error';
+export type RuleType = 'simple' | 'ai';
+
+export interface BaseRuleInterface {
+  id: string;
+  name: string;
+  description: string;
+  type: RuleType;
+  severity: RuleSeverity;
+}
+
+// Using IAIRule to avoid conflict with the class name
+export interface IAIRule extends BaseRuleInterface {
+  type: 'ai';
+  promptTemplate: string;
+  model?: string;
+  provider?: string;
+}
+
+export interface TextRange {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface RuleMatch {
+  ruleId: string;
+  range: TextRange;
+  suggestion?: string;
+  explanation?: string;
+  severity: RuleSeverity;
+}
+
+export type Rule = IAIRule; // For this processor we only deal with AI rules
 
 /**
  * Configuration for AI providers and models
@@ -16,6 +53,10 @@ interface AIConfig {
  * Implementation of an AI-powered rule
  */
 export class AIRule extends BaseRule {
+  private promptTemplate: string;
+  private model: string;
+  private provider: string;
+
   /**
    * Create a new AI rule
    */
@@ -24,11 +65,14 @@ export class AIRule extends BaseRule {
     name: string,
     description: string,
     severity: RuleSeverity,
-    private promptTemplate: string,
-    private model: string = 'gpt-4o',
-    private provider: string = 'openai',
+    promptTemplate: string,
+    model: string = 'gpt-4o',
+    provider: string = 'openai',
   ) {
     super(id, name, description, 'ai', severity);
+    this.promptTemplate = promptTemplate;
+    this.model = model;
+    this.provider = provider;
   }
 
   /**
