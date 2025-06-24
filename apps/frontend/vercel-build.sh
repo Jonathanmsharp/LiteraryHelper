@@ -42,19 +42,22 @@ else
     pnpm install --no-frozen-lockfile
 fi
 
-# Build the types package first
+# Build the types package first - directly using TypeScript compiler
 echo -e "${YELLOW}Building @literaryhelper/types package...${NC}"
-if [ "$USE_NPM" = true ]; then
-    cd packages/types && npm run build:bin && cd "$WORKSPACE_ROOT"
-else
-    pnpm --filter "@literaryhelper/types" run build:bin
-fi
+cd packages/types
+echo -e "${YELLOW}Installing typescript package...${NC}"
+npm install --no-save typescript
+
+echo -e "${YELLOW}Compiling TypeScript files directly...${NC}"
+# Use npx to run the typescript compiler directly
+npx --no typescript tsc --project ./tsconfig.json
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to build types package. Exiting.${NC}"
     exit 1
 fi
 echo -e "${GREEN}Types package built successfully.${NC}"
+cd "$WORKSPACE_ROOT"
 
 # Build the frontend app
 echo -e "${YELLOW}Building frontend app...${NC}"
