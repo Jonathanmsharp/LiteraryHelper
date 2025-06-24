@@ -1,0 +1,50 @@
+# pnpm-project.yaml - Configuration for Vercel deployment
+# This file helps Vercel understand how to handle workspace dependencies in the monorepo
+
+# Specify which workspace packages this app depends on
+dependencies:
+  - "@literaryhelper/types"
+
+# Hoisting configuration
+hoisting: true
+shamefully-hoist: true
+
+# Workspace configuration
+workspace-concurrency: 4
+link-workspace-packages: true
+strict-peer-dependencies: false
+
+# Dependency resolution strategy
+resolution-mode: highest
+
+# Package installation behavior
+save-workspace-protocol: false
+save-prefix: ''
+prefer-offline: true
+
+# Build optimization
+side-effects-cache: true
+node-linker: hoisted
+
+# Public hoist patterns for critical dependencies
+public-hoist-patterns:
+  - "*next*"
+  - "*react*"
+  - "*react-dom*"
+  - "@clerk/*"
+  - "*eslint*"
+  - "*typescript*"
+  - "slate*"
+  - "zustand"
+  - "drizzle*"
+
+# Vercel-specific settings
+vercel:
+  # Build command override for Vercel
+  build-command: "cd ../.. && pnpm turbo build --filter=frontend..."
+  # Install command override for Vercel
+  install-command: "pnpm install --frozen-lockfile"
+  # Root directory relative to the app
+  root-dir: "../.."
+  # Output directory
+  output-dir: ".next"

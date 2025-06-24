@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "vercel-install": "sh -c 'if command -v pnpm >/dev/null 2>&1; then pnpm install --frozen-lockfile --workspace-root; else npm install --legacy-peer-deps; fi'",
+    "vercel-build": "sh -c 'chmod +x apps/frontend/vercel-build.sh && apps/frontend/vercel-build.sh'"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",
