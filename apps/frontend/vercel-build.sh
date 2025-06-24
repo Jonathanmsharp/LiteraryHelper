@@ -39,7 +39,7 @@ if [ "$USE_NPM" = true ]; then
     npm install --legacy-peer-deps
 else
     echo -e "${GREEN}Using pnpm for dependency installation${NC}"
-    pnpm install --frozen-lockfile
+    pnpm install --no-frozen-lockfile
 fi
 
 # Build the types package first
