@@ -30,6 +30,10 @@ yarn-error.log*
 
 # vercel
 .vercel
+# Ignore any Vercel build/deployment cache & outputs
+.vercel/**/output
+.vercel/**/build
+.vercel/**/cache
 
 # typescript
 *.tsbuildinfo
@@ -68,3 +72,6 @@ yarn-error.log*
 .turbo/
 apps/*/node_modules/
 node_modules/
+
+# Deployment metadata artefacts
+deployments.json

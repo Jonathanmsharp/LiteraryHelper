@@ -44,7 +44,7 @@ jobs:
       - name: 🏗️ Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
 
       - name: 🏗️ Setup Node.js
         uses: actions/setup-node@v4
@@ -52,11 +52,7 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: 🔨 Build
-        run: pnpm turbo build --filter=frontend...
+      # Local install/build skipped – handled by Vercel according to vercel.json
 
       - name: 🔧 Install Vercel CLI
         run: npm install --global vercel@latest
@@ -125,7 +121,7 @@ jobs:
       - name: 🏗️ Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
 
       - name: 🏗️ Setup Node.js
         uses: actions/setup-node@v4
@@ -133,11 +129,7 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: 🔨 Build
-        run: pnpm turbo build --filter=frontend...
+      # Local install/build skipped – handled by Vercel according to vercel.json
 
       - name: 🔧 Install Vercel CLI
         run: npm install --global vercel@latest
