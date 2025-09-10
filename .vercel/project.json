@@ -8,7 +8,7 @@
   "installCommand": "pnpm install",
   "devCommand": "cd ../.. && pnpm turbo run dev --filter=frontend...",
   "rootDirectory": "apps/frontend",
-  "public": false,
+  "public": true,
   "git": {
     "deploymentEnabled": {
       "main": true,

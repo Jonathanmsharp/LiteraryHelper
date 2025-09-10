@@ -1,28 +1,28 @@
 // /config/rules.json
 [
   {
-    "id": "passive-voice",
-    "name": "Passive Voice",
-    "description": "Flags sentences written in the passive voice.",
+    "id": "strong-verbs",
+    "name": "Use Strong Verbs",
+    "description": "Replace weak, imprecise verbs with strong verbs that are more specific. Strong verbs enliven, reduce the need for adjectives and adverbs, and trigger new sentence structures.",
+    "type": "simple",
+    "severity": "info",
+    "pattern": "\\b(do|did|does|get|got|give|gave|make|made|use|put|take|set|go|went|come|came|run|move|walk|walked|stand|sit|look|looked|see|saw|watch|watched|turn|feel|felt|tell|told|ask|asked|reply|replied|can|could|will|would|shall|should|may|might|must|like|love|hate|want|need|think|thought|know|knew|remember|forgot)\\b"
+  },
+  {
+    "id": "question-being-having",
+    "name": "Question Being and Having",
+    "description": "Look for isolated forms of 'to be' and 'to have'. These are the weakest of all verbs. Static, they slow a narrative. Question each use.",
     "type": "simple",
     "severity": "warning",
-    "pattern": "\\b(was|were|is|are|been|be)\\b\\s+\\w+ed\\b"
+    "pattern": "\\b(am|is|are|was|were|be|being|been|have|has|had|having)\\b(?!\\s+\\w+ed\\b)(?!\\s+\\w+ing\\b)"
   },
   {
-    "id": "adverb-overuse",
-    "name": "Adverb Over‑use",
-    "description": "Detects -ly adverbs preceding verbs.",
+    "id": "stick-with-said",
+    "name": "Stick with Said",
+    "description": "Look for non-said attributions. Newspapers use 'he said,' 'she said,' or 'they said,' over and over. Anything else adds opinion to what is mostly a marker to show who is talking.",
     "type": "simple",
     "severity": "info",
-    "pattern": "\\b\\w+ly\\b\\s+\\w+"
-  },
-  {
-    "id": "very-weakener",
-    "name": "\"Very\" Weakener",
-    "description": "Discourage use of the word \"very\" as an intensifier.",
-    "type": "simple",
-    "severity": "info",
-    "pattern": "\\bvery\\b"
+    "pattern": "\\b(whispered|shouted|screamed|yelled|muttered|mumbled|declared|announced|proclaimed|exclaimed|gasped|sighed|chuckled|laughed|giggled|sobbed|cried|wept|growled|snarled|hissed|roared|bellowed|shrieked|squeaked|chirped|cooed|purred|drawled|remarked|commented|observed|noted|mentioned|added|continued|replied|responded|answered|retorted|snapped|barked|demanded|insisted|argued|protested|complained|grumbled|moaned|groaned|confessed|admitted|revealed|disclosed|shared|explained|clarified|elaborated|described|related|recounted|recalled|remembered|reminisced|mused|pondered|wondered|questioned|inquired|asked)\\b"
   },
   {
     "id": "tone-consistency",
