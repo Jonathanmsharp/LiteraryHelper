@@ -57,7 +57,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const rulesConfigPath = path.resolve(process.cwd(), 'config', 'rules.json');
+    // Try multiple possible paths for the rules config
+    const possiblePaths = [
+      path.resolve(process.cwd(), 'config', 'rules.json'),
+      path.resolve(process.cwd(), '..', 'config', 'rules.json'),
+      path.resolve(process.cwd(), '..', '..', 'config', 'rules.json'),
+      path.join(process.cwd(), 'config', 'rules.json'),
+      path.join(process.cwd(), '..', 'config', 'rules.json'),
+      path.join(process.cwd(), '..', '..', 'config', 'rules.json'),
+    ];
+
+    let rulesConfigPath: string | null = null;
+    for (const testPath of possiblePaths) {
+      try {
+        await fs.access(testPath);
+        rulesConfigPath = testPath;
+        console.log('[rules] Found config at:', testPath);
+        break;
+      } catch {
+        // Continue to next path
+      }
+    }
+
+    if (!rulesConfigPath) {
+      console.error('[rules] Could not find rules.json in any of these paths:', possiblePaths);
+      return res.status(500).json({ error: 'Rules configuration file not found' });
+    }
 
     if (cachedRules && Date.now() - lastLoaded < CACHE_TTL) {
       if (req.method === 'HEAD') return res.status(204).end();
