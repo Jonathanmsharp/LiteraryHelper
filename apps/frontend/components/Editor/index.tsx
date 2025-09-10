@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createEditor, Descendant, Node, Text, Range, Path, Transforms, BaseEditor } from 'slate';
 import { Slate, Editable, withReact, ReactEditor, HistoryEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
@@ -227,6 +227,7 @@ interface EditorProps {
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
+  const isApplyingHighlights = useRef(false);
 
   // Create editor instance
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
@@ -252,25 +253,43 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
 
   // Apply highlights when analysis results change
   useEffect(() => {
-    if (results && results.length > 0) {
+    if (results && results.length > 0 && !isApplyingHighlights.current) {
       console.log('[Editor] Applying highlights for', results.length, 'matches');
+      isApplyingHighlights.current = true;
       
-      // Convert results to analysis matches
-      const analysisMatches: AnalysisMatch[] = results.map((match, index) => ({
-        id: `${match.ruleId}-${index}`,
-        ruleId: match.ruleId,
-        start: match.range.start,
-        end: match.range.end,
-        text: match.range.text,
-        suggestion: match.suggestion ?? '',
-        explanation: match.explanation ?? '',
-        severity: match.severity,
-      }));
+      // Use setTimeout to make this asynchronous and prevent blocking
+      setTimeout(() => {
+        try {
+          // Convert results to analysis matches
+          const analysisMatches: AnalysisMatch[] = results.map((match, index) => ({
+            id: `${match.ruleId}-${index}`,
+            ruleId: match.ruleId,
+            start: match.range.start,
+            end: match.range.end,
+            text: match.range.text,
+            suggestion: match.suggestion ?? '',
+            explanation: match.explanation ?? '',
+            severity: match.severity,
+          }));
 
-      // Apply highlights
-      applyHighlights(editor, analysisMatches);
+          // Apply highlights
+          applyHighlights(editor, analysisMatches);
+        } catch (error) {
+          console.error('[Editor] Error applying highlights:', error);
+        } finally {
+          isApplyingHighlights.current = false;
+        }
+      }, 0);
     }
-  }, [results, editor]);
+  }, [results]); // Removed 'editor' from dependencies to prevent infinite loop
+
+  // Cleanup debounced functions on unmount
+  useEffect(() => {
+    return () => {
+      debouncedAnalyze.cancel();
+      debouncedOnChange.cancel();
+    };
+  }, [debouncedAnalyze, debouncedOnChange]);
 
   return (
     <div className="editor-container">
