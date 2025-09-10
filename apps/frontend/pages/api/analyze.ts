@@ -61,41 +61,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Found ${allMatches.length} matches from rule processing`)
 
-    // Group matches by rule ID for the response format
-    const resultsByRule = new Map<string, any>()
-    
-    for (const match of allMatches) {
-      if (!resultsByRule.has(match.ruleId)) {
-        // Get rule info from processors
-        const simpleRule = processor.getSimpleRule(match.ruleId)
-        const aiRule = processor.getAIRule(match.ruleId)
-        const rule = simpleRule || aiRule
-        
-        if (rule) {
-          resultsByRule.set(match.ruleId, {
-            ruleId: match.ruleId,
-            ruleName: rule.name,
-            matches: [],
-            processingTimeMs: 0
-          })
-        }
-      }
-      
-      const ruleResult = resultsByRule.get(match.ruleId)
-      if (ruleResult) {
-        ruleResult.matches.push(match)
-      }
-    }
-
-    // Convert to array and add processing times
-    const results = Array.from(resultsByRule.values()).map(result => ({
-      ...result,
-      processingTimeMs: Math.round(processingTime / Math.max(resultsByRule.size, 1)) // Avoid division by zero
+    // Flatten all matches from all rules into a single array
+    const flattenedMatches = allMatches.map(match => ({
+      ruleId: match.ruleId,
+      range: match.range,
+      suggestion: match.suggestion,
+      explanation: match.explanation,
+      severity: match.severity
     }))
 
-    console.log(`Returning ${results.length} rule results`)
-
-    // Create analysis result
+    // Create analysis result in the format expected by the frontend
     const analysisResult = {
       id: `analysis_${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -103,11 +78,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       textHash: `hash_${text.length}_${text.slice(0, 10)}`,
       userId: isDemoMode ? 'demo-user' : userId,
       sessionId: isDemoMode ? 'demo-session' : sessionId,
-      results,
+      // Frontend expects these fields:
+      matches: flattenedMatches,
       status: 'completed' as const,
       processingTimeMs: processingTime,
-      demoMode: isDemoMode
+      demoMode: isDemoMode,
+      // Additional fields for compatibility
+      jobId: null,
+      statusEndpoint: null,
+      fromCache: false,
+      message: `Analysis completed with ${flattenedMatches.length} matches`
     }
+
+    console.log(`Returning ${flattenedMatches.length} matches to frontend`)
 
     res.status(200).json(analysisResult)
     
