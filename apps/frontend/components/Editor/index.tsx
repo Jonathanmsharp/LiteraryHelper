@@ -258,22 +258,25 @@ const Editor = React.memo(({
   useEffect(() => {
     if (!results.length) return;
 
-    // Clear existing highlights
+        // Clear existing highlights
     const clearHighlights = (nodes: Descendant[]): Descendant[] => {
       return nodes.map(node => {
         if (Text.isText(node)) {
           const { highlight, ...rest } = node;
-          return rest;
+          return rest as Descendant;
         } else {
           return {
             ...node,
-            children: clearHighlights(node.children),
-          };
+            children: clearHighlights(node.children as Descendant[]) as Descendant[],
+          } as Descendant;
+        }
+      });
+    };
         }
       });
     };
 
-    // Apply new highlights
+        // Apply new highlights
     const applyHighlights = (nodes: Descendant[], textOffset: number = 0): Descendant[] => {
       return nodes.map(node => {
         if (Text.isText(node)) {
@@ -327,12 +330,15 @@ const Editor = React.memo(({
             });
           }
 
-          return newText.length > 1 ? newText : newText[0] || node;
+          return newText.length > 1 ? newText as Descendant[] : newText[0] as Descendant || node;
         } else {
           return {
             ...node,
-            children: applyHighlights(node.children, textOffset),
-          };
+            children: applyHighlights(node.children, textOffset) as Descendant[],
+          } as Descendant;
+        }
+      });
+    };
         }
       });
     };
