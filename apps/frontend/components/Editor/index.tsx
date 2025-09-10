@@ -1,35 +1,19 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor, Element as SlateElement, Range, Transforms, Path } from 'slate';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { createEditor, Descendant, Node, Text, Range, Path, Transforms, BaseEditor } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
-import { withHistory, HistoryEditor } from 'slate-history';
-import { useHotkeys } from 'react-hotkeys-hook';
+import { withHistory } from 'slate-history';
+import { debounce } from 'lodash';
 import { useAnalysis } from '../../lib/hooks/useAnalysis';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
 
-// Enhanced types for analysis results
-interface TextRange {
-  start: number;
-  end: number;
-  text: string;
-}
+type CustomEditor = BaseEditor & ReactEditor & HistoryEditor;
 
-interface AnalysisMatch {
-  id: string;
-  ruleId: string;
-  start: number;
-  end: number;
-  text: string;
-  suggestion: string;
-  explanation: string;
-  severity: 'error' | 'warning' | 'info';
-}
-
-interface AnalysisResult {
-  jobId: string;
-  matches: AnalysisMatch[];
-  status: 'processing' | 'complete';
-  progress: number;
-}
+type HistoryEditor = {
+  history: {
+    redos: any[];
+    undos: any[];
+  };
+};
 
 type CustomElement = {
   type: 'paragraph' | 'heading';
@@ -54,34 +38,42 @@ type CustomText = {
 
 declare module 'slate' {
   interface CustomTypes {
-    Editor: BaseEditor & ReactEditor & HistoryEditor;
+    Editor: CustomEditor;
     Element: CustomElement;
     Text: CustomText;
   }
 }
 
-interface EditorProps {
+type AnalysisMatch = {
+  id: string;
+  ruleId: string;
+  start: number;
+  end: number;
+  text: string;
+  suggestion: string;
+  explanation: string;
+  severity: 'error' | 'warning' | 'info';
+};
+
+type EditorProps = {
   defaultValue?: Descendant[];
   placeholder?: string;
   readOnly?: boolean;
-  onChange?: (value: string) => void;
-}
+  onChange?: (text: string) => void;
+};
 
 const defaultEditorValue: Descendant[] = [
-  { type: 'paragraph', children: [{ text: '' }] } as CustomElement,
+  {
+    type: 'paragraph',
+    children: [{ text: '' }],
+  },
 ];
-
-function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number): (...args: Parameters<F>) => void {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-  return (...args: Parameters<F>): void => {
-    if (timeout !== null) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), waitFor);
-  };
-}
 
 const Element = ({ attributes, children, element }: any) => {
   switch (element.type) {
-    case 'heading': return <h2 {...attributes}>{children}</h2>;
+    case 'heading':
+      const HeadingTag = `h${element.level || 1}` as keyof JSX.IntrinsicElements;
+      return <HeadingTag {...attributes}>{children}</HeadingTag>;
     default: return <p {...attributes}>{children}</p>;
   }
 };
@@ -140,12 +132,8 @@ const Leaf = ({ attributes, children, leaf }: any) => {
 function getSlateLocation(editor: SlateEditor, offset: number): [Path, number] | null {
   let currentOffset = 0;
   
-  for (const [node, path] of SlateEditor.nodes(editor, {
-    at: [],
-    match: (n) => Text.isText(n),
-  })) {
-    const text = node as Text;
-    const textLength = text.text.length;
+  for (const [node, path] of Node.texts(editor)) {
+    const textLength = node.text.length;
     
     if (currentOffset <= offset && offset <= currentOffset + textLength) {
       return [path, offset - currentOffset];
@@ -160,11 +148,10 @@ function getSlateLocation(editor: SlateEditor, offset: number): [Path, number] |
 // Helper to clear all highlights from the editor
 function clearHighlights(editor: SlateEditor): void {
   // Remove all highlight marks from the entire document
-  for (const [node, path] of SlateEditor.nodes(editor, {
-    at: [],
-    match: (n) => Text.isText(n) && n.highlight !== undefined,
-  })) {
-    Transforms.unsetNodes(editor, 'highlight', { at: path });
+  for (const [node, path] of Node.texts(editor)) {
+    if (node.highlight) {
+      Transforms.unsetNodes(editor, 'highlight', { at: path });
+    }
   }
 }
 
@@ -219,9 +206,11 @@ function applyHighlights(editor: SlateEditor, matches: AnalysisMatch[]): void {
 }
 
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
-  const editor = useMemo(() => withHistory(withReact(createEditor())), []);
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
+
+  // Create editor instance
+  const editor = useMemo(() => withHistory(withReact(createEditor())), []);
 
   const debouncedAnalyze = useCallback(
     debounce((text: string) => {
@@ -242,17 +231,13 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     [onChange, debouncedAnalyze]
   );
 
-  // Apply highlights when analysis results change
+  // Apply highlights when analysis results change - FIXED VERSION
   useEffect(() => {
     if (results && results.length > 0) {
       console.log('[Editor] Applying highlights for', results.length, 'matches');
       
-      // We need to use ReactEditor.focus to ensure we can modify the editor
-      ReactEditor.focus(editor);
-      
-      // Apply highlights to the editor
+      // Convert results to analysis matches
       const analysisMatches: AnalysisMatch[] = results.map((match, index) => ({
-        // Generate a stable id based on rule + index (API does not supply one)
         id: `${match.ruleId}-${index}`,
         ruleId: match.ruleId,
         start: match.range.start,
@@ -263,48 +248,44 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
         severity: match.severity,
       }));
 
+      // Apply highlights without forcing focus or re-renders
       applyHighlights(editor, analysisMatches);
-      
-      // Force a re-render of the editor
-      const currentValue = [...value];
-      setValue(currentValue);
     }
-  }, [results, editor, value]);
+  }, [results, editor]); // Removed 'value' from dependencies to prevent infinite loop
 
   return (
     <div className="editor-container">
       {isLoading && (
         <div className="analysis-indicator">
-          <span className="loading-spinner"></span>
-          Analyzing your text...
+          <div className="loading-spinner"></div>
+          <span>Analyzing...</span>
         </div>
       )}
-      
       {error && (
         <div className="error-indicator">
-          Analysis error: {error}
+          <span>Analysis failed: {error}</span>
         </div>
       )}
-      
       <Slate
         editor={editor}
-        initialValue={value}
+        value={value}
         onChange={(newValue) => {
           setValue(newValue);
           debouncedOnChange(newValue);
         }}
       >
         <Editable
-          placeholder={placeholder}
-          readOnly={readOnly}
           renderElement={Element}
           renderLeaf={Leaf}
-          spellCheck
-          autoFocus
-          className="editor-editable"
+          placeholder={placeholder}
+          readOnly={readOnly}
+          style={{
+            minHeight: '250px',
+            outline: 'none',
+          }}
         />
       </Slate>
-      
+
       <style jsx>{`
         .editor-container {
           position: relative;
@@ -319,9 +300,10 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           background-color: #fff;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
-        
-        .editor-editable { min-height: 250px; outline: none; }
-        
+        .editor-container :global(.slate-editable) {
+          min-height: 250px;
+          outline: none;
+        }
         .analysis-indicator {
           position: absolute;
           top: 8px;
@@ -335,7 +317,6 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           align-items: center;
           gap: 6px;
         }
-        
         .error-indicator {
           position: absolute;
           top: 8px;
@@ -346,7 +327,6 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           border-radius: 4px;
           font-size: 12px;
         }
-        
         .loading-spinner {
           display: inline-block;
           width: 12px;
@@ -356,12 +336,16 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           border-top-color: white;
           animation: spin 1s ease-in-out infinite;
         }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
       `}</style>
     </div>
   );
 });
 
 Editor.displayName = 'Editor';
+
 export default Editor;
