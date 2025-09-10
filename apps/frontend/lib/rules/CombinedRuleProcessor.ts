@@ -1,5 +1,6 @@
 import { SimpleRuleProcessor, RuleMatch } from './SimpleRuleProcessor';
 import { AIRuleProcessor } from './AIRuleProcessor';
+import path from 'path';
 
 /**
  * Combined processor that handles both simple and AI rules
@@ -9,8 +10,10 @@ export class CombinedRuleProcessor {
   private aiProcessor: AIRuleProcessor;
 
   constructor(configPath?: string) {
-    this.simpleProcessor = new SimpleRuleProcessor(configPath);
-    this.aiProcessor = new AIRuleProcessor(configPath);
+    // Use the same path resolution as the rules API
+    const defaultConfigPath = path.resolve(process.cwd(), 'config', 'rules.json');
+    this.simpleProcessor = new SimpleRuleProcessor(configPath || defaultConfigPath);
+    this.aiProcessor = new AIRuleProcessor(configPath || defaultConfigPath);
   }
 
   /**

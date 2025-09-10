@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { CombinedRuleProcessor } from '../../lib/rules/CombinedRuleProcessor'
+import path from 'path'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -47,13 +48,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       textLength: text.length 
     })
 
-    // Initialize the combined rule processor
-    const processor = new CombinedRuleProcessor()
+    // Use the same path resolution as the rules API
+    const rulesConfigPath = path.resolve(process.cwd(), 'config', 'rules.json')
+    
+    // Initialize the combined rule processor with explicit path
+    const processor = new CombinedRuleProcessor(rulesConfigPath)
     
     // Process the text with all rules
     const startTime = Date.now()
     const allMatches = await processor.processText(text)
     const processingTime = Date.now() - startTime
+
+    console.log(`Found ${allMatches.length} matches from rule processing`)
 
     // Group matches by rule ID for the response format
     const resultsByRule = new Map<string, any>()
@@ -84,8 +90,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Convert to array and add processing times
     const results = Array.from(resultsByRule.values()).map(result => ({
       ...result,
-      processingTimeMs: Math.round(processingTime / resultsByRule.size) // Rough estimate per rule
+      processingTimeMs: Math.round(processingTime / Math.max(resultsByRule.size, 1)) // Avoid division by zero
     }))
+
+    console.log(`Returning ${results.length} rule results`)
 
     // Create analysis result
     const analysisResult = {
