@@ -1,19 +1,28 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { createEditor, Descendant, Node, Text, Range, Path, Transforms, BaseEditor } from 'slate';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor, Element as SlateElement, Range, Transforms, Path } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
-import { withHistory } from 'slate-history';
+import { withHistory, HistoryEditor } from 'slate-history';
 import { debounce } from 'lodash';
 import { useAnalysis } from '../../lib/hooks/useAnalysis';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
 
-type CustomEditor = BaseEditor & ReactEditor & HistoryEditor;
+// Enhanced types for analysis results
+interface TextRange {
+  start: number;
+  end: number;
+  text: string;
+}
 
-type HistoryEditor = {
-  history: {
-    redos: any[];
-    undos: any[];
-  };
-};
+interface AnalysisMatch {
+  id: string;
+  ruleId: string;
+  start: number;
+  end: number;
+  text: string;
+  suggestion: string;
+  explanation: string;
+  severity: 'error' | 'warning' | 'info';
+}
 
 type CustomElement = {
   type: 'paragraph' | 'heading';
@@ -38,22 +47,11 @@ type CustomText = {
 
 declare module 'slate' {
   interface CustomTypes {
-    Editor: CustomEditor;
+    Editor: BaseEditor & ReactEditor & HistoryEditor;
     Element: CustomElement;
     Text: CustomText;
   }
 }
-
-type AnalysisMatch = {
-  id: string;
-  ruleId: string;
-  start: number;
-  end: number;
-  text: string;
-  suggestion: string;
-  explanation: string;
-  severity: 'error' | 'warning' | 'info';
-};
 
 type EditorProps = {
   defaultValue?: Descendant[];
@@ -109,7 +107,9 @@ const Leaf = ({ attributes, children, leaf }: any) => {
     <span
       {...attributes}
       style={style}
-      onClick={leaf.highlight ? () => {
+      onClick={leaf.highlight ? (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         // Open sidebar with rule details
         const { openSidebar } = useSidebarStore.getState();
         const match = {
@@ -231,7 +231,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     [onChange, debouncedAnalyze]
   );
 
-  // Apply highlights when analysis results change - FIXED VERSION
+  // Apply highlights when analysis results change
   useEffect(() => {
     if (results && results.length > 0) {
       console.log('[Editor] Applying highlights for', results.length, 'matches');
@@ -248,10 +248,10 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
         severity: match.severity,
       }));
 
-      // Apply highlights without forcing focus or re-renders
+      // Apply highlights
       applyHighlights(editor, analysisMatches);
     }
-  }, [results, editor]); // Removed 'value' from dependencies to prevent infinite loop
+  }, [results, editor]);
 
   return (
     <div className="editor-container">
