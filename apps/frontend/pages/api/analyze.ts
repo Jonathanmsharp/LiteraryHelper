@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { CombinedRuleProcessor } from '../../lib/rules/CombinedRuleProcessor'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -46,39 +47,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       textLength: text.length 
     })
 
-    // TODO: Implement actual analysis logic here
-    // For now, return a mock response to demonstrate the functionality
+    // Initialize the combined rule processor
+    const processor = new CombinedRuleProcessor()
     
-    const mockResults = [
-      {
-        ruleId: 'very-weakener',
-        ruleName: '"Very" Weakener',
-        matches: [
-          {
-            ruleId: 'very-weakener',
-            range: { start: 25, end: 29, text: 'very' },
-            suggestion: 'Consider removing "very" for stronger writing',
-            explanation: 'The word "very" often weakens your writing. Try using a stronger adjective instead.',
-            severity: 'info'
-          }
-        ],
-        processingTimeMs: 45
-      },
-      {
-        ruleId: 'passive-voice',
-        ruleName: 'Passive Voice',
-        matches: [
-          {
-            ruleId: 'passive-voice',
-            range: { start: 100, end: 130, text: 'was written badly' },
-            suggestion: 'This text was written poorly',
-            explanation: 'Passive voice can make writing feel distant and weak. Consider using active voice.',
-            severity: 'warning'
-          }
-        ],
-        processingTimeMs: 32
+    // Process the text with all rules
+    const startTime = Date.now()
+    const allMatches = await processor.processText(text)
+    const processingTime = Date.now() - startTime
+
+    // Group matches by rule ID for the response format
+    const resultsByRule = new Map<string, any>()
+    
+    for (const match of allMatches) {
+      if (!resultsByRule.has(match.ruleId)) {
+        // Get rule info from processors
+        const simpleRule = processor.getSimpleRule(match.ruleId)
+        const aiRule = processor.getAIRule(match.ruleId)
+        const rule = simpleRule || aiRule
+        
+        if (rule) {
+          resultsByRule.set(match.ruleId, {
+            ruleId: match.ruleId,
+            ruleName: rule.name,
+            matches: [],
+            processingTimeMs: 0
+          })
+        }
       }
-    ]
+      
+      const ruleResult = resultsByRule.get(match.ruleId)
+      if (ruleResult) {
+        ruleResult.matches.push(match)
+      }
+    }
+
+    // Convert to array and add processing times
+    const results = Array.from(resultsByRule.values()).map(result => ({
+      ...result,
+      processingTimeMs: Math.round(processingTime / resultsByRule.size) // Rough estimate per rule
+    }))
 
     // Create analysis result
     const analysisResult = {
@@ -88,9 +95,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       textHash: `hash_${text.length}_${text.slice(0, 10)}`,
       userId: isDemoMode ? 'demo-user' : userId,
       sessionId: isDemoMode ? 'demo-session' : sessionId,
-      results: mockResults,
+      results,
       status: 'completed' as const,
-      processingTimeMs: 150,
+      processingTimeMs: processingTime,
       demoMode: isDemoMode
     }
 
@@ -106,4 +113,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     })
   }
-} 
+}
