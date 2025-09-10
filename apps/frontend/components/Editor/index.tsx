@@ -236,8 +236,8 @@ interface EditorProps {
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
-  const isApplyingHighlights = useRef(false);
-  const lastResultsHash = useRef<string>('');
+  const highlightsApplied = useRef(false);
+  const lastResultsLength = useRef(0);
 
   // Create editor instance
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
@@ -247,6 +247,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
       if (text.trim().length > 10) {
         console.log('[Editor] Starting analysis for:', text.substring(0, 50) + '...');
         analyzeText(text);
+        highlightsApplied.current = false; // Reset when new analysis starts
       }
     }, 1000),
     [analyzeText]
@@ -261,25 +262,12 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     [onChange, debouncedAnalyze]
   );
 
-  // Apply highlights when analysis results change
+  // Apply highlights when analysis results change - SIMPLIFIED APPROACH
   useEffect(() => {
-    if (results && results.length > 0) {
-      // Create a hash of the results to prevent duplicate processing
-      const resultsHash = JSON.stringify(results.map(r => ({ ruleId: r.ruleId, start: r.range.start, end: r.range.end, text: r.range.text })));
-      
-      if (resultsHash === lastResultsHash.current) {
-        console.log('[Editor] Skipping duplicate results');
-        return;
-      }
-      
-      if (isApplyingHighlights.current) {
-        console.log('[Editor] Already applying highlights, skipping');
-        return;
-      }
-      
-      console.log('[Editor] Applying highlights for', results.length, 'matches');
-      isApplyingHighlights.current = true;
-      lastResultsHash.current = resultsHash;
+    if (results && results.length > 0 && !highlightsApplied.current && results.length !== lastResultsLength.current) {
+      console.log('[Editor] Applying highlights for', results.length, 'matches (first time)');
+      highlightsApplied.current = true;
+      lastResultsLength.current = results.length;
       
       // Use setTimeout to make this asynchronous and prevent blocking
       setTimeout(() => {
@@ -300,12 +288,10 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           applyHighlights(editor, analysisMatches);
         } catch (error) {
           console.error('[Editor] Error applying highlights:', error);
-        } finally {
-          isApplyingHighlights.current = false;
         }
       }, 0);
     }
-  }, [results]); // Only depend on results
+  }, [results, editor]);
 
   // Cleanup debounced functions on unmount
   useEffect(() => {
