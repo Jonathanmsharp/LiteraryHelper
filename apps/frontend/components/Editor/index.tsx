@@ -236,70 +236,72 @@ interface EditorProps {
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
-  const highlightsApplied = useRef(false);
-  const lastResultsLength = useRef(0);
 
   // Create editor instance
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
 
-  const debouncedAnalyze = useCallback(
-    debounce((text: string) => {
+  // Custom analysis function that applies highlights directly
+  const analyzeAndHighlight = useCallback(
+    debounce(async (text: string) => {
       if (text.trim().length > 10) {
         console.log('[Editor] Starting analysis for:', text.substring(0, 50) + '...');
-        analyzeText(text);
-        highlightsApplied.current = false; // Reset when new analysis starts
+        
+        try {
+          // Call the analysis API directly
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-user-id': 'demo-user',
+              'x-auth-session-id': 'demo-session',
+              'x-auth-demo-mode': 'true',
+            },
+            body: JSON.stringify({ text }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[Editor] Analysis complete, applying highlights for', data.matches.length, 'matches');
+            
+            // Convert results to analysis matches
+            const analysisMatches: AnalysisMatch[] = data.matches.map((match: any, index: number) => ({
+              id: `${match.ruleId}-${index}`,
+              ruleId: match.ruleId,
+              start: match.range.start,
+              end: match.range.end,
+              text: match.range.text,
+              suggestion: match.suggestion ?? '',
+              explanation: match.explanation ?? '',
+              severity: match.severity,
+            }));
+
+            // Apply highlights directly
+            applyHighlights(editor, analysisMatches);
+          }
+        } catch (error) {
+          console.error('[Editor] Analysis error:', error);
+        }
       }
     }, 1000),
-    [analyzeText]
+    [editor]
   );
 
   const debouncedOnChange = useCallback(
     debounce((value: Descendant[]) => {
       const textContent = value.map((node) => Node.string(node)).join('\n');
       if (onChange) onChange(textContent);
-      debouncedAnalyze(textContent);
+      analyzeAndHighlight(textContent);
     }, 500),
-    [onChange, debouncedAnalyze]
+    [onChange, analyzeAndHighlight]
   );
-
-  // Apply highlights when analysis results change - SIMPLIFIED APPROACH
-  useEffect(() => {
-    if (results && results.length > 0 && !highlightsApplied.current && results.length !== lastResultsLength.current) {
-      console.log('[Editor] Applying highlights for', results.length, 'matches (first time)');
-      highlightsApplied.current = true;
-      lastResultsLength.current = results.length;
-      
-      // Use setTimeout to make this asynchronous and prevent blocking
-      setTimeout(() => {
-        try {
-          // Convert results to analysis matches
-          const analysisMatches: AnalysisMatch[] = results.map((match, index) => ({
-            id: `${match.ruleId}-${index}`,
-            ruleId: match.ruleId,
-            start: match.range.start,
-            end: match.range.end,
-            text: match.range.text,
-            suggestion: match.suggestion ?? '',
-            explanation: match.explanation ?? '',
-            severity: match.severity,
-          }));
-
-          // Apply highlights
-          applyHighlights(editor, analysisMatches);
-        } catch (error) {
-          console.error('[Editor] Error applying highlights:', error);
-        }
-      }, 0);
-    }
-  }, [results, editor]);
 
   // Cleanup debounced functions on unmount
   useEffect(() => {
     return () => {
-      debouncedAnalyze.cancel();
+      analyzeAndHighlight.cancel();
       debouncedOnChange.cancel();
     };
-  }, [debouncedAnalyze, debouncedOnChange]);
+  }, [analyzeAndHighlight, debouncedOnChange]);
 
   return (
     <div className="editor-container">
