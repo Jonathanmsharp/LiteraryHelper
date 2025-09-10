@@ -237,6 +237,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
   const isApplyingHighlights = useRef(false);
+  const lastResultsHash = useRef<string>('');
 
   // Create editor instance
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
@@ -262,9 +263,23 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
 
   // Apply highlights when analysis results change
   useEffect(() => {
-    if (results && results.length > 0 && !isApplyingHighlights.current) {
+    if (results && results.length > 0) {
+      // Create a hash of the results to prevent duplicate processing
+      const resultsHash = JSON.stringify(results.map(r => ({ ruleId: r.ruleId, start: r.range.start, end: r.range.end, text: r.range.text })));
+      
+      if (resultsHash === lastResultsHash.current) {
+        console.log('[Editor] Skipping duplicate results');
+        return;
+      }
+      
+      if (isApplyingHighlights.current) {
+        console.log('[Editor] Already applying highlights, skipping');
+        return;
+      }
+      
       console.log('[Editor] Applying highlights for', results.length, 'matches');
       isApplyingHighlights.current = true;
+      lastResultsHash.current = resultsHash;
       
       // Use setTimeout to make this asynchronous and prevent blocking
       setTimeout(() => {
@@ -290,7 +305,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
         }
       }, 0);
     }
-  }, [results]); // Removed 'editor' from dependencies to prevent infinite loop
+  }, [results]); // Only depend on results
 
   // Cleanup debounced functions on unmount
   useEffect(() => {
