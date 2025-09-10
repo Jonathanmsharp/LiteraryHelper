@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createEditor, Descendant, Node, Text, Range, Path, Transforms, BaseEditor } from 'slate';
 import { Slate, Editable, withReact, ReactEditor, HistoryEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
@@ -20,17 +20,6 @@ type CustomText = {
     suggestion?: string;
     explanation?: string;
   };
-};
-
-type AnalysisMatch = {
-  id: string;
-  ruleId: string;
-  start: number;
-  end: number;
-  text: string;
-  suggestion: string;
-  explanation: string;
-  severity: 'error' | 'warning' | 'info';
 };
 
 declare module 'slate' {
@@ -126,106 +115,6 @@ const Leaf = ({ attributes, children, leaf }: any) => {
   );
 };
 
-// Helper function to convert absolute text positions to Slate path and offset
-function getSlateLocation(editor: any, offset: number): [Path, number] | null {
-  let currentOffset = 0;
-  
-  for (const [node, path] of Node.texts(editor)) {
-    const textLength = node.text.length;
-    
-    if (currentOffset <= offset && offset <= currentOffset + textLength) {
-      return [path, offset - currentOffset];
-    }
-    
-    currentOffset += textLength;
-  }
-  
-  return null;
-}
-
-// Clear all highlights from the editor
-function clearHighlights(editor: any) {
-  const textNodes = Array.from(Node.texts(editor));
-  
-  textNodes.forEach(([node, path]) => {
-    if (node.highlight) {
-      Transforms.setNodes(
-        editor,
-        { highlight: undefined },
-        { at: path }
-      );
-    }
-  });
-}
-
-// Apply highlights to the editor
-function applyHighlights(editor: any, matches: AnalysisMatch[]) {
-  console.log('[applyHighlights] Starting with', matches.length, 'matches');
-  
-  // Clear existing highlights first
-  clearHighlights(editor);
-  
-  // Sort matches by start position (descending) to avoid offset issues
-  const sortedMatches = [...matches].sort((a, b) => b.start - a.start);
-  
-  sortedMatches.forEach((match) => {
-    const { start, end, ruleId, severity, suggestion, explanation } = match;
-    
-    // Get the text content to verify the match
-    const textContent = Node.string(editor);
-    const matchedText = textContent.slice(start, end);
-    
-    if (matchedText !== match.text) {
-      console.warn(`Text mismatch for match ${match.id}: expected "${match.text}", got "${matchedText}"`);
-      return;
-    }
-    
-    // Find the Slate location for the start of the match
-    const startLocation = getSlateLocation(editor, start);
-    if (!startLocation) {
-      console.warn(`Could not find Slate location for match ${match.id} at position ${start}`);
-      return;
-    }
-    
-    const [startPath, startOffset] = startLocation;
-    const endLocation = getSlateLocation(editor, end);
-    
-    if (!endLocation) {
-      console.warn(`Could not find Slate location for match ${match.id} at position ${end}`);
-      return;
-    }
-    
-    const [endPath, endOffset] = endLocation;
-    
-    // Create the range for the match
-    const range: Range = {
-      anchor: { path: startPath, offset: startOffset },
-      focus: { path: endPath, offset: endOffset },
-    };
-    
-    // Apply the highlight
-    Transforms.setNodes(
-      editor,
-      {
-        highlight: {
-          matchId: match.id,
-          ruleId,
-          severity,
-          suggestion,
-          explanation,
-        },
-      },
-      {
-        at: range,
-        match: Text.isText,
-        split: true,
-      }
-    );
-    
-    console.log(`[applyHighlights] Applied highlight for "${match.text}" (${ruleId})`);
-  });
-}
-
 interface EditorProps {
   defaultValue?: Descendant[];
   placeholder?: string;
@@ -240,68 +129,32 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
   // Create editor instance
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
 
-  // Custom analysis function that applies highlights directly
-  const analyzeAndHighlight = useCallback(
-    debounce(async (text: string) => {
+  const debouncedAnalyze = useCallback(
+    debounce((text: string) => {
       if (text.trim().length > 10) {
         console.log('[Editor] Starting analysis for:', text.substring(0, 50) + '...');
-        
-        try {
-          // Call the analysis API directly
-          const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-auth-user-id': 'demo-user',
-              'x-auth-session-id': 'demo-session',
-              'x-auth-demo-mode': 'true',
-            },
-            body: JSON.stringify({ text }),
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('[Editor] Analysis complete, applying highlights for', data.matches.length, 'matches');
-            
-            // Convert results to analysis matches
-            const analysisMatches: AnalysisMatch[] = data.matches.map((match: any, index: number) => ({
-              id: `${match.ruleId}-${index}`,
-              ruleId: match.ruleId,
-              start: match.range.start,
-              end: match.range.end,
-              text: match.range.text,
-              suggestion: match.suggestion ?? '',
-              explanation: match.explanation ?? '',
-              severity: match.severity,
-            }));
-
-            // Apply highlights directly
-            applyHighlights(editor, analysisMatches);
-          }
-        } catch (error) {
-          console.error('[Editor] Analysis error:', error);
-        }
+        analyzeText(text);
       }
     }, 1000),
-    [editor]
+    [analyzeText]
   );
 
   const debouncedOnChange = useCallback(
     debounce((value: Descendant[]) => {
       const textContent = value.map((node) => Node.string(node)).join('\n');
       if (onChange) onChange(textContent);
-      analyzeAndHighlight(textContent);
+      debouncedAnalyze(textContent);
     }, 500),
-    [onChange, analyzeAndHighlight]
+    [onChange, debouncedAnalyze]
   );
 
   // Cleanup debounced functions on unmount
   useEffect(() => {
     return () => {
-      analyzeAndHighlight.cancel();
+      debouncedAnalyze.cancel();
       debouncedOnChange.cancel();
     };
-  }, [analyzeAndHighlight, debouncedOnChange]);
+  }, [debouncedAnalyze, debouncedOnChange]);
 
   return (
     <div className="editor-container">
@@ -314,6 +167,39 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
       {error && (
         <div className="error-indicator">
           <span>Analysis failed: {error}</span>
+        </div>
+      )}
+      {results && results.length > 0 && (
+        <div className="analysis-results">
+          <h4>Analysis Results ({results.length} matches found):</h4>
+          <ul>
+            {results.map((match, index) => (
+              <li key={index} style={{ 
+                padding: '5px', 
+                margin: '2px 0', 
+                backgroundColor: match.severity === 'error' ? '#FEE2E2' : 
+                                match.severity === 'warning' ? '#FEF3C7' : '#DBEAFE',
+                borderRadius: '3px',
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                const { openSidebar } = useSidebarStore.getState();
+                openSidebar({
+                  id: `${match.ruleId}-${index}`,
+                  ruleId: match.ruleId,
+                  range: match.range,
+                  severity: match.severity,
+                  suggestion: match.suggestion,
+                  explanation: match.explanation,
+                });
+              }}>
+                <strong>{match.ruleId}</strong>: "{match.range.text}" 
+                <span style={{ fontSize: '0.9em', color: '#666' }}>
+                  ({match.severity})
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       <Slate
@@ -364,6 +250,31 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           font-size: 14px;
           color: #0369a1;
           z-index: 10;
+        }
+        
+        .analysis-results {
+          margin-bottom: 15px;
+          padding: 15px;
+          background: #f8f9fa;
+          border: 1px solid #e9ecef;
+          border-radius: 4px;
+        }
+        
+        .analysis-results h4 {
+          margin: 0 0 10px 0;
+          font-size: 16px;
+          color: #495057;
+        }
+        
+        .analysis-results ul {
+          margin: 0;
+          padding: 0;
+          list-style: none;
+        }
+        
+        .analysis-results li {
+          font-size: 14px;
+          line-height: 1.4;
         }
         
         .loading-spinner {
