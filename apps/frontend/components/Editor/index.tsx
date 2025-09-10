@@ -91,12 +91,15 @@ const Leaf = ({ attributes, children, leaf }: any) => {
     style.padding = '1px 2px';
   }
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
+  // Handle click on highlighted text
+  const handleClick = (e: React.MouseEvent) => {
     if (leaf.highlight) {
       e.preventDefault();
       e.stopPropagation();
       
-      // Use the hook properly instead of direct store access
+      console.log('[Leaf] Clicked on highlight:', leaf.highlight);
+      
+      // Get the sidebar store and open it
       const { openSidebar } = useSidebarStore.getState();
       const match = {
         id: leaf.highlight.matchId,
@@ -106,9 +109,11 @@ const Leaf = ({ attributes, children, leaf }: any) => {
         suggestion: leaf.highlight.suggestion,
         explanation: leaf.highlight.explanation,
       };
+      
+      console.log('[Leaf] Opening sidebar with match:', match);
       openSidebar(match);
     }
-  }, [leaf.highlight, leaf.text]);
+  };
 
   return (
     <span
@@ -155,6 +160,8 @@ function clearHighlights(editor: any) {
 
 // Apply highlights to the editor
 function applyHighlights(editor: any, matches: AnalysisMatch[]) {
+  console.log('[applyHighlights] Starting with', matches.length, 'matches');
+  
   // Clear existing highlights first
   clearHighlights(editor);
   
@@ -214,6 +221,8 @@ function applyHighlights(editor: any, matches: AnalysisMatch[]) {
         split: true,
       }
     );
+    
+    console.log(`[applyHighlights] Applied highlight for "${match.text}" (${ruleId})`);
   });
 }
 
