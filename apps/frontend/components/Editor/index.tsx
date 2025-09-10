@@ -1,42 +1,20 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor, Element as SlateElement, Range, Transforms, Path } from 'slate';
+import { createEditor, Descendant, Node, Text, BaseEditor, Editor as SlateEditor, Element as SlateElement } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory, HistoryEditor } from 'slate-history';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useAnalysis } from '../../lib/hooks/useAnalysis';
-import { useSidebarStore } from '../Sidebar/RuleSidebar';
+import { create } from 'zustand';
 
-// Enhanced types for analysis results
-interface TextRange {
-  start: number;
-  end: number;
-  text: string;
-}
-
-interface AnalysisMatch {
-  id: string;
-  ruleId: string;
-  start: number;
-  end: number;
-  text: string;
-  suggestion: string;
-  explanation: string;
-  severity: 'error' | 'warning' | 'info';
-}
-
-interface AnalysisResult {
-  jobId: string;
-  matches: AnalysisMatch[];
-  status: 'processing' | 'complete';
-  progress: number;
-}
+// Define custom element types
+type CustomElementType = 'paragraph' | 'heading';
 
 type CustomElement = {
-  type: 'paragraph' | 'heading';
+  type: CustomElementType;
   level?: number;
   children: CustomText[];
 };
 
+// Define custom text types
 type CustomText = {
   text: string;
   bold?: boolean;
@@ -45,13 +23,11 @@ type CustomText = {
   highlight?: {
     color: string;
     ruleId: string;
-    matchId: string;
     severity: 'error' | 'warning' | 'info';
-    suggestion: string;
-    explanation: string;
   };
 };
 
+// Extend the Slate types
 declare module 'slate' {
   interface CustomTypes {
     Editor: BaseEditor & ReactEditor & HistoryEditor;
@@ -60,6 +36,46 @@ declare module 'slate' {
   }
 }
 
+// Define editor store type with enhanced error handling
+interface EditorStore {
+  text: string;
+  analysisInProgress: boolean;
+  error: string | null;
+  results: Array<{
+    ruleId: string;
+    ruleName: string;
+    matches: Array<{
+      ruleId: string;
+      range: { start: number; end: number; text: string };
+      suggestion?: string;
+      explanation?: string;
+      severity: 'error' | 'warning' | 'info';
+    }>;
+    processingTimeMs: number;
+  }>;
+  demoMode: boolean;
+  setText: (text: string) => void;
+  setAnalysisInProgress: (inProgress: boolean) => void;
+  setResults: (results: any[]) => void;
+  setError: (error: string | null) => void;
+  setDemoMode: (demoMode: boolean) => void;
+}
+
+// Create editor store with Zustand
+const useEditorStore = create<EditorStore>((set) => ({
+  text: '',
+  analysisInProgress: false,
+  error: null,
+  results: [],
+  demoMode: false,
+  setText: (text) => set({ text }),
+  setAnalysisInProgress: (inProgress) => set({ analysisInProgress: inProgress }),
+  setResults: (results) => set({ results }),
+  setError: (error) => set({ error }),
+  setDemoMode: (demoMode) => set({ demoMode }),
+}));
+
+// Define props for the Editor component
 interface EditorProps {
   defaultValue?: Descendant[];
   placeholder?: string;
@@ -67,213 +83,308 @@ interface EditorProps {
   onChange?: (value: string) => void;
 }
 
+// Default initial value for the editor
 const defaultEditorValue: Descendant[] = [
-  { type: 'paragraph', children: [{ text: '' }] } as CustomElement,
+  {
+    type: 'paragraph',
+    children: [{ text: '' }],
+  } as CustomElement,
 ];
 
-function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number): (...args: Parameters<F>) => void {
+// Debounce function implementation
+function debounce<F extends (...args: any[]) => any>(
+  func: F,
+  waitFor: number
+): (...args: Parameters<F>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
+
   return (...args: Parameters<F>): void => {
-    if (timeout !== null) clearTimeout(timeout);
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
     timeout = setTimeout(() => func(...args), waitFor);
   };
 }
 
-const Element = ({ attributes, children, element }: any) => {
+// Element renderer component
+const Element = ({ attributes, children, element }: {
+  attributes: any;
+  children: React.ReactNode;
+  element: CustomElement;
+}) => {
   switch (element.type) {
-    case 'heading': return <h2 {...attributes}>{children}</h2>;
-    default: return <p {...attributes}>{children}</p>;
+    case 'heading':
+      return <h2 {...attributes}>{children}</h2>;
+    default:
+      return <p {...attributes}>{children}</p>;
   }
 };
 
-const Leaf = ({ attributes, children, leaf }: any) => {
+// Leaf renderer component
+const Leaf = ({ attributes, children, leaf }: {
+  attributes: any;
+  children: React.ReactNode;
+  leaf: CustomText;
+}) => {
   let style: React.CSSProperties = {};
-  
-  if (leaf.bold) style.fontWeight = 'bold';
-  if (leaf.italic) style.fontStyle = 'italic';
-  if (leaf.underline) style.textDecoration = 'underline';
-  
+
+  if (leaf.bold) {
+    style.fontWeight = 'bold';
+  }
+  if (leaf.italic) {
+    style.fontStyle = 'italic';
+  }
+  if (leaf.underline) {
+    style.textDecoration = 'underline';
+  }
   if (leaf.highlight) {
     switch (leaf.highlight.severity) {
       case 'error':
         style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
         style.textDecoration = 'underline wavy red';
-        style.cursor = 'pointer';
         break;
       case 'warning':
         style.backgroundColor = 'rgba(255, 165, 0, 0.2)';
         style.textDecoration = 'underline wavy orange';
-        style.cursor = 'pointer';
         break;
       case 'info':
         style.backgroundColor = 'rgba(0, 0, 255, 0.1)';
         style.textDecoration = 'underline dotted blue';
-        style.cursor = 'pointer';
         break;
     }
   }
 
   return (
-    <span
-      {...attributes}
-      style={style}
-      onClick={leaf.highlight ? () => {
-        // Open sidebar with rule details
-        const { openSidebar } = useSidebarStore.getState();
-        const match = {
-          id: leaf.highlight.matchId,
-          ruleId: leaf.highlight.ruleId,
-          range: { start: 0, end: 0, text: leaf.text },
-          severity: leaf.highlight.severity,
-          suggestion: leaf.highlight.suggestion,
-          explanation: leaf.highlight.explanation,
-        };
-        openSidebar(match);
-      } : undefined}
-    >
+    <span {...attributes} style={style}>
       {children}
     </span>
   );
 };
 
-// Helper function to convert absolute text positions to Slate path and offset
-function getSlateLocation(editor: SlateEditor, offset: number): [Path, number] | null {
-  let currentOffset = 0;
-  
-  for (const [node, path] of SlateEditor.nodes(editor, {
-    at: [],
-    match: (n) => Text.isText(n),
-  })) {
-    const text = node as Text;
-    const textLength = text.text.length;
-    
-    if (currentOffset <= offset && offset <= currentOffset + textLength) {
-      return [path, offset - currentOffset];
-    }
-    
-    currentOffset += textLength;
-  }
-  
-  return null;
-}
-
-// Helper to clear all highlights from the editor
-function clearHighlights(editor: SlateEditor): void {
-  // Remove all highlight marks from the entire document
-  for (const [node, path] of SlateEditor.nodes(editor, {
-    at: [],
-    match: (n) => Text.isText(n) && n.highlight !== undefined,
-  })) {
-    Transforms.unsetNodes(editor, 'highlight', { at: path });
-  }
-}
-
-// Apply highlights to the editor based on analysis results
-function applyHighlights(editor: SlateEditor, matches: AnalysisMatch[]): void {
-  // 1. Clear existing highlights
-  clearHighlights(editor);
-
-  // 2. Process matches from earliest → latest to avoid range clashes
-  const sorted = [...matches].sort((a, b) => a.start - b.start);
-
-  sorted.forEach((match) => {
-    const startLoc = getSlateLocation(editor, match.start);
-    const endLoc   = getSlateLocation(editor, match.end);
-
-    if (!startLoc || !endLoc) {
-      console.warn('[Editor] Unable to resolve Slate range for match', match);
-      return;
-    }
-
-    const range: Range = {
-      anchor: { path: startLoc[0], offset: startLoc[1] },
-      focus:  { path: endLoc[0],   offset: endLoc[1] }
-    };
-
-    // Apply highlight by setting a custom Text property.
-    // `split: true` ensures only the exact span receives the mark.
-    Transforms.setNodes(
-      editor,
-      {
-        highlight: {
-          ruleId:     match.ruleId,
-          matchId:    match.id,
-          severity:   match.severity,
-          suggestion: match.suggestion,
-          explanation: match.explanation,
-          color:
-            match.severity === 'error'
-              ? 'red'
-              : match.severity === 'warning'
-              ? 'orange'
-              : 'blue',
-        },
-      },
-      {
-        at: range,
-        match: Text.isText,
-        split: true,
-      }
-    );
-  });
-}
-
-const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
+// Main Editor component wrapped in React.memo for performance
+const Editor = React.memo(({
+  defaultValue = defaultEditorValue,
+  placeholder = 'Start writing...',
+  readOnly = false,
+  onChange,
+}: EditorProps) => {
+  // Initialize the Slate editor with plugins
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
+  
+  // Track the editor value state
   const [value, setValue] = useState<Descendant[]>(defaultValue);
-  const { analyzeText, isLoading, results, error } = useAnalysis();
+  
+  // Access the editor store
+  const { 
+    setText, 
+    analysisInProgress, 
+    error, 
+    results, 
+    demoMode,
+    setAnalysisInProgress, 
+    setResults, 
+    setError, 
+    setDemoMode 
+  } = useEditorStore();
 
-  const debouncedAnalyze = useCallback(
-    debounce((text: string) => {
-      if (text.trim().length > 10) {
-        console.log('[Editor] Starting analysis for:', text.substring(0, 50) + '...');
-        analyzeText(text);
+  // Analysis function with better error handling
+  const analyzeText = useCallback(
+    debounce(async (text: string) => {
+      if (!text.trim()) {
+        setResults([]);
+        setError(null);
+        return;
       }
-    }, 1000),
-    [analyzeText]
+
+      setAnalysisInProgress(true);
+      setError(null);
+
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || data.error || 'Analysis failed');
+        }
+
+        setResults(data.results || []);
+        
+        // Show demo mode notification if applicable
+        if (data.demoMode) {
+          setDemoMode(true);
+          console.log('Running in demo mode');
+        } else {
+          setDemoMode(false);
+        }
+      } catch (err) {
+        console.error('Analysis error:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Analysis failed';
+        setError(errorMessage);
+        setResults([]);
+      } finally {
+        setAnalysisInProgress(false);
+      }
+    }, 500),
+    [setAnalysisInProgress, setResults, setError, setDemoMode]
   );
 
+  // Create debounced onChange handler (500ms delay)
   const debouncedOnChange = useCallback(
     debounce((value: Descendant[]) => {
-      const textContent = value.map((node) => Node.string(node)).join('\n');
-      if (onChange) onChange(textContent);
-      debouncedAnalyze(textContent);
+      const textContent = value
+        .map((node) => Node.string(node))
+        .join('\n');
+      
+      setText(textContent);
+      
+      // Trigger analysis
+      analyzeText(textContent);
+      
+      if (onChange) {
+        onChange(textContent);
+      }
     }, 500),
-    [onChange, debouncedAnalyze]
+    [onChange, setText, analyzeText]
   );
 
-  // Apply highlights when analysis results change
+  // Apply highlights to editor based on analysis results
   useEffect(() => {
-    if (results && results.length > 0) {
-      console.log('[Editor] Applying highlights for', results.length, 'matches');
-      
-      // We need to use ReactEditor.focus to ensure we can modify the editor
-      ReactEditor.focus(editor);
-      
-      // Apply highlights to the editor
-      const analysisMatches: AnalysisMatch[] = results.map((match, index) => ({
-        // Generate a stable id based on rule + index (API does not supply one)
-        id: `${match.ruleId}-${index}`,
-        ruleId: match.ruleId,
-        start: match.range.start,
-        end: match.range.end,
-        text: match.range.text,
-        suggestion: match.suggestion ?? '',
-        explanation: match.explanation ?? '',
-        severity: match.severity,
-      }));
+    if (!results.length) return;
 
-      applyHighlights(editor, analysisMatches);
-      
-      // Force a re-render of the editor
-      const currentValue = [...value];
-      setValue(currentValue);
+    // Clear existing highlights
+    const clearHighlights = (nodes: Descendant[]): Descendant[] => {
+      return nodes.map(node => {
+        if (Text.isText(node)) {
+          const { highlight, ...rest } = node;
+          return rest;
+        } else {
+          return {
+            ...node,
+            children: clearHighlights(node.children),
+          };
+        }
+      });
+    };
+
+    // Apply new highlights
+    const applyHighlights = (nodes: Descendant[], textOffset: number = 0): Descendant[] => {
+      return nodes.map(node => {
+        if (Text.isText(node)) {
+          const text = node.text;
+          const newText: CustomText[] = [];
+          let currentOffset = 0;
+
+          // Find all matches that overlap with this text node
+          const relevantMatches = results.flatMap(result => 
+            result.matches.filter(match => 
+              match.range.start >= textOffset && 
+              match.range.end <= textOffset + text.length
+            )
+          );
+
+          // Sort matches by start position
+          relevantMatches.sort((a, b) => a.range.start - b.range.start);
+
+          relevantMatches.forEach(match => {
+            const matchStart = match.range.start - textOffset;
+            const matchEnd = match.range.end - textOffset;
+
+            // Add text before match
+            if (currentOffset < matchStart) {
+              newText.push({
+                text: text.slice(currentOffset, matchStart),
+                ...node
+              });
+            }
+
+            // Add highlighted match
+            newText.push({
+              text: text.slice(matchStart, matchEnd),
+              ...node,
+              highlight: {
+                color: match.severity === 'error' ? 'red' : 
+                       match.severity === 'warning' ? 'orange' : 'blue',
+                ruleId: match.ruleId,
+                severity: match.severity
+              }
+            });
+
+            currentOffset = matchEnd;
+          });
+
+          // Add remaining text
+          if (currentOffset < text.length) {
+            newText.push({
+              text: text.slice(currentOffset),
+              ...node
+            });
+          }
+
+          return newText.length > 1 ? newText : newText[0] || node;
+        } else {
+          return {
+            ...node,
+            children: applyHighlights(node.children, textOffset),
+          };
+        }
+      });
+    };
+
+    const newValue = applyHighlights(clearHighlights(value));
+    setValue(newValue);
+  }, [results, value, setValue]);
+
+  // Define hotkey handlers
+  useHotkeys('mod+b', (event) => {
+    event.preventDefault();
+    const marks = SlateEditor.marks(editor) || {};
+    const isBold = marks.bold === true;
+    if (isBold) {
+      editor.removeMark('bold');
+    } else {
+      editor.addMark('bold', true);
     }
-  }, [results, editor, value]);
+  });
+
+  useHotkeys('mod+i', (event) => {
+    event.preventDefault();
+    const marks = SlateEditor.marks(editor) || {};
+    const isItalic = marks.italic === true;
+    if (isItalic) {
+      editor.removeMark('italic');
+    } else {
+      editor.addMark('italic', true);
+    }
+  });
+
+  useHotkeys('mod+u', (event) => {
+    event.preventDefault();
+    const marks = SlateEditor.marks(editor) || {};
+    const isUnderline = marks.underline === true;
+    if (isUnderline) {
+      editor.removeMark('underline');
+    } else {
+      editor.addMark('underline', true);
+    }
+  });
 
   return (
     <div className="editor-container">
-      {isLoading && (
+      {demoMode && (
+        <div className="demo-mode-banner">
+          <span className="demo-icon">🎯</span>
+          Demo Mode - Try the writing analysis tool
+        </div>
+      )}
+      
+      {analysisInProgress && (
         <div className="analysis-indicator">
           <span className="loading-spinner"></span>
           Analyzing your text...
@@ -281,8 +392,18 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
       )}
       
       {error && (
-        <div className="error-indicator">
-          Analysis error: {error}
+        <div className="error-message">
+          <strong>Analysis Error:</strong> {error}
+          {error.includes('401') && (
+            <div className="error-actions">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="retry-button"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
         </div>
       )}
       
@@ -297,13 +418,45 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
         <Editable
           placeholder={placeholder}
           readOnly={readOnly}
-          renderElement={Element}
-          renderLeaf={Leaf}
+          renderElement={(props) => <Element {...props} />}
+          renderLeaf={(props) => <Leaf {...props} />}
           spellCheck
           autoFocus
           className="editor-editable"
         />
       </Slate>
+      
+      {results.length > 0 && (
+        <div className="analysis-results">
+          <h3>Writing Suggestions ({results.length} issues found)</h3>
+          {results.map((result, index) => (
+            <div key={index} className="rule-result">
+              <div className="rule-header">
+                <span className={`rule-severity ${result.matches[0]?.severity || 'info'}`}>
+                  {result.matches[0]?.severity || 'info'}
+                </span>
+                <span className="rule-name">{result.ruleName}</span>
+                <span className="rule-time">{result.processingTimeMs}ms</span>
+              </div>
+              {result.matches.map((match, matchIndex) => (
+                <div key={matchIndex} className="match-item">
+                  <div className="match-text">"{match.range.text}"</div>
+                  {match.suggestion && (
+                    <div className="match-suggestion">
+                      <strong>Suggestion:</strong> {match.suggestion}
+                    </div>
+                  )}
+                  {match.explanation && (
+                    <div className="match-explanation">
+                      <strong>Why:</strong> {match.explanation}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
       
       <style jsx>{`
         .editor-container {
@@ -320,7 +473,26 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
-        .editor-editable { min-height: 250px; outline: none; }
+        .demo-mode-banner {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 8px 12px;
+          border-radius: 4px;
+          margin-bottom: 12px;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .demo-icon {
+          font-size: 16px;
+        }
+        
+        .editor-editable {
+          min-height: 250px;
+          outline: none;
+        }
         
         .analysis-indicator {
           position: absolute;
@@ -336,17 +508,6 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           gap: 6px;
         }
         
-        .error-indicator {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          background-color: rgba(255, 0, 0, 0.8);
-          color: white;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-        }
-        
         .loading-spinner {
           display: inline-block;
           width: 12px;
@@ -357,11 +518,128 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           animation: spin 1s ease-in-out infinite;
         }
         
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-message {
+          background-color: #fee2e2;
+          border: 1px solid #fca5a5;
+          border-radius: 4px;
+          padding: 12px;
+          margin-bottom: 12px;
+          color: #dc2626;
+        }
+        
+        .error-actions {
+          margin-top: 8px;
+        }
+        
+        .retry-button {
+          background-color: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 6px 12px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+        
+        .retry-button:hover {
+          background-color: #2563eb;
+        }
+        
+        .analysis-results {
+          margin-top: 16px;
+          padding: 16px;
+          background-color: #f8fafc;
+          border-radius: 4px;
+          border: 1px solid #e2e8f0;
+        }
+        
+        .analysis-results h3 {
+          margin: 0 0 12px 0;
+          color: #1e293b;
+          font-size: 16px;
+        }
+        
+        .rule-result {
+          margin-bottom: 16px;
+          padding: 12px;
+          background-color: white;
+          border-radius: 4px;
+          border-left: 4px solid #e2e8f0;
+        }
+        
+        .rule-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+        
+        .rule-severity {
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-size: 12px;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+        
+        .rule-severity.error {
+          background-color: #fee2e2;
+          color: #dc2626;
+        }
+        
+        .rule-severity.warning {
+          background-color: #fef3c7;
+          color: #d97706;
+        }
+        
+        .rule-severity.info {
+          background-color: #dbeafe;
+          color: #2563eb;
+        }
+        
+        .rule-name {
+          font-weight: 600;
+          color: #1e293b;
+        }
+        
+        .rule-time {
+          margin-left: auto;
+          font-size: 12px;
+          color: #64748b;
+        }
+        
+        .match-item {
+          margin-bottom: 8px;
+        }
+        
+        .match-text {
+          font-family: 'Courier New', monospace;
+          background-color: #f1f5f9;
+          padding: 4px 6px;
+          border-radius: 3px;
+          font-size: 14px;
+          margin-bottom: 4px;
+        }
+        
+        .match-suggestion,
+        .match-explanation {
+          font-size: 14px;
+          margin-bottom: 4px;
+        }
+        
+        .match-suggestion strong,
+        .match-explanation strong {
+          color: #374151;
+        }
+        
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
     </div>
   );
 });
 
 Editor.displayName = 'Editor';
+
 export default Editor;
