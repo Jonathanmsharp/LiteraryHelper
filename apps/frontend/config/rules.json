@@ -1,0 +1,51 @@
+// /config/rules.json
+[
+  {
+    "id": "strong-verbs",
+    "name": "Use Strong Verbs",
+    "description": "Replace weak, imprecise verbs with strong verbs that are more specific. Strong verbs enliven, reduce the need for adjectives and adverbs, and trigger new sentence structures.",
+    "type": "simple",
+    "severity": "info",
+    "pattern": "\\b(do|did|does|get|got|give|gave|make|made|use|put|take|set|go|went|come|came|run|move|walk|walked|stand|sit|look|looked|see|saw|watch|watched|turn|feel|felt|tell|told|ask|asked|reply|replied|can|could|will|would|shall|should|may|might|must|like|love|hate|want|need|think|thought|know|knew|remember|forgot)\\b"
+  },
+  {
+    "id": "question-being-having",
+    "name": "Question Being and Having",
+    "description": "Look for isolated forms of 'to be' and 'to have'. These are the weakest of all verbs. Static, they slow a narrative. Question each use.",
+    "type": "simple",
+    "severity": "warning",
+    "pattern": "\\b(am|is|are|was|were|be|being|been|have|has|had|having)\\b(?!\\s+\\w+ed\\b)(?!\\s+\\w+ing\\b)"
+  },
+  {
+    "id": "stick-with-said",
+    "name": "Stick with Said",
+    "description": "Look for non-said attributions. Newspapers use 'he said,' 'she said,' or 'they said,' over and over. Anything else adds opinion to what is mostly a marker to show who is talking.",
+    "type": "simple",
+    "severity": "info",
+    "pattern": "\\b(whispered|shouted|screamed|yelled|muttered|mumbled|declared|announced|proclaimed|exclaimed|gasped|sighed|chuckled|laughed|giggled|sobbed|cried|wept|growled|snarled|hissed|roared|bellowed|shrieked|squeaked|chirped|cooed|purred|drawled|remarked|commented|observed|noted|mentioned|added|continued|replied|responded|answered|retorted|snapped|barked|demanded|insisted|argued|protested|complained|grumbled|moaned|groaned|confessed|admitted|revealed|disclosed|shared|explained|clarified|elaborated|described|related|recounted|recalled|remembered|reminisced|mused|pondered|wondered|questioned|inquired|asked)\\b"
+  },
+  {
+    "id": "tone-consistency",
+    "name": "Tone Consistency",
+    "description": "Ensure tone stays formal‑friendly throughout.",
+    "type": "ai",
+    "severity": "warning",
+    "promptTemplate": "You are a tone‑consistency checker. Highlight any sentence that deviates from a formal‑friendly tone..."
+  },
+  {
+    "id": "claims-without-evidence",
+    "name": "Claims Without Evidence",
+    "description": "Find factual claims lacking citations or data.",
+    "type": "ai",
+    "severity": "error",
+    "promptTemplate": "Identify statements that present facts or figures without a supporting citation..."
+  },
+  {
+    "id": "inclusive-language",
+    "name": "Inclusive Language",
+    "description": "Flag non‑inclusive or biased terms and suggest alternatives.",
+    "type": "ai",
+    "severity": "warning",
+    "promptTemplate": "Detect non‑inclusive language in the text, list the term, why it's problematic, and suggest an alternative..."
+  }
+]
