@@ -6,6 +6,7 @@ interface RuleStore {
   toggleRule: (ruleId: string) => void;
   setEnabledRules: (rules: string[]) => void;
   isRuleEnabled: (ruleId: string) => boolean;
+  resetRules: () => void;
 }
 
 export const useRuleStore = create<RuleStore>()(
@@ -53,11 +54,25 @@ export const useRuleStore = create<RuleStore>()(
         const enabled = get().enabledRules.includes(ruleId);
         console.log('[RuleStore] Checking if rule is enabled:', ruleId, enabled);
         return enabled;
+      },
+      
+      resetRules: () => {
+        console.log('[RuleStore] Resetting rules to default');
+        set({
+          enabledRules: [
+            'strong-verbs',
+            'question-being-having', 
+            'stick-with-said',
+            'tone-consistency',
+            'claims-without-evidence',
+            'inclusive-language'
+          ]
+        });
       }
     }),
     {
       name: 'rule-store', // unique name for localStorage
-      version: 1,
+      version: 2, // Increment version to clear old localStorage
     }
   )
 );
