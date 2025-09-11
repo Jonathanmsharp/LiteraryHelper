@@ -34,7 +34,7 @@ const FALLBACK_RULES: Rule[] = [
   },
   {
     id: 'literary-language',
-    name: 'If It Sounds Literary, It Isn't',
+    name: 'If It Sounds Literary, It Isn\'t',
     description: 'Keep your language conversational and use modern, casual speech patterns even with serious non-fiction subjects. You want to build a relationship with your reader. Don't be stuffy or superior.',
     type: 'ai',
     severity: 'warning'
