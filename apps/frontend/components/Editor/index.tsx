@@ -41,7 +41,6 @@ declare module 'slate' {
     Editor: BaseEditor & ReactEditor;
     Element: CustomElement;
     Text: CustomText;
-    };
   }
 }
 
