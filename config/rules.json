@@ -25,27 +25,13 @@
     "pattern": "\\b(whispered|shouted|screamed|yelled|muttered|mumbled|declared|announced|proclaimed|exclaimed|gasped|sighed|chuckled|laughed|giggled|sobbed|cried|wept|growled|snarled|hissed|roared|bellowed|shrieked|squeaked|chirped|cooed|purred|drawled|remarked|commented|observed|noted|mentioned|added|continued|replied|responded|answered|retorted|snapped|barked|demanded|insisted|argued|protested|complained|grumbled|moaned|groaned|confessed|admitted|revealed|disclosed|shared|explained|clarified|elaborated|described|related|recounted|recalled|remembered|reminisced|mused|pondered|wondered|questioned|inquired|asked)\\b"
   },
   {
-    "id": "tone-consistency",
-    "name": "Tone Consistency",
-    "description": "Ensure tone stays formal‑friendly throughout.",
+    "id": "literary-language",
+    "name": "If It Sounds Literary, It Isn't",
+    "description": "Keep your language conversational and use modern, casual speech patterns even with serious non-fiction subjects. You want to build a relationship with your reader. Don't be stuffy or superior.",
     "type": "ai",
     "severity": "warning",
-    "promptTemplate": "You are a tone‑consistency checker. Highlight any sentence that deviates from a formal‑friendly tone..."
-  },
-  {
-    "id": "claims-without-evidence",
-    "name": "Claims Without Evidence",
-    "description": "Find factual claims lacking citations or data.",
-    "type": "ai",
-    "severity": "error",
-    "promptTemplate": "Identify statements that present facts or figures without a supporting citation..."
-  },
-  {
-    "id": "inclusive-language",
-    "name": "Inclusive Language",
-    "description": "Flag non‑inclusive or biased terms and suggest alternatives.",
-    "type": "ai",
-    "severity": "warning",
-    "promptTemplate": "Detect non‑inclusive language in the text, list the term, why it's problematic, and suggest an alternative..."
+    "promptTemplate": "You are a conversational writing style evaluator focused on identifying overly literary, pretentious, or stuffy language that creates distance between the author and the reader.\n\n## Instructions\n1. Scan the text for language that sounds overly literary, academic, or pretentious\n2. Flag sentences that use unnecessarily complex vocabulary when simpler words would work\n3. Identify phrases that sound like the author is trying to impress rather than communicate clearly\n4. Look for overly formal constructions that feel stiff or superior\n5. Return JSON array with: sentence, start, end, reason, suggestion\n6. If no issues found, return empty array []\n\n## What to Flag\n- **Overly complex vocabulary**: Using \"utilize\" instead of \"use\", \"commence\" instead of \"start\"\n- **Literary flourishes**: Excessive metaphors, alliteration, or poetic language in non-fiction\n- **Academic jargon**: Unnecessarily complex terms when simple ones suffice\n- **Stuffy constructions**: \"It is important to note that...\", \"One must consider...\"\n- **Pretentious phrasing**: \"The veritable plethora of...\", \"The myriad complexities of...\"\n- **Overly formal tone**: Language that sounds like a thesis or academic paper\n\n## What NOT to Flag\n- Technical terms that are necessary for the subject matter\n- Proper nouns and brand names\n- Quoted speech or dialogue\n- Domain-specific terminology that readers expect\n- Occasional sophisticated words used appropriately\n- Formal language in contexts where it's expected (legal, medical, etc.)\n\n###TEXT START###\n{{document}}\n###TEXT END###",
+    "model": "gpt-4o",
+    "provider": "openai"
   }
 ]
