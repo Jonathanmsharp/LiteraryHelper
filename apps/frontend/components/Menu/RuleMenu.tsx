@@ -188,12 +188,15 @@ const RuleMenu: React.FC = () => {
           border-bottom: 1px solid #e5e7eb;
           background: #4a7c7e;
           color: white;
+          min-height: 60px;
         }
 
         .menu-header h3 {
           margin: 0;
           font-size: 1.25rem;
           font-weight: 600;
+          flex: 1;
+          text-align: center;
         }
 
         .close-button {
@@ -205,6 +208,11 @@ const RuleMenu: React.FC = () => {
           padding: 4px;
           border-radius: 4px;
           transition: background-color 0.2s ease;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .close-button:hover {
