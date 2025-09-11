@@ -13,7 +13,6 @@ export const useRuleStore = create<RuleStore>()(
   persist(
     (set, get) => ({
       // Default: all rules enabled
-      enabledRules: [
         'strong-verbs',
         'question-being-having', 
         'stick-with-said',
@@ -60,12 +59,12 @@ export const useRuleStore = create<RuleStore>()(
           enabledRules: [
             'strong-verbs',
             'question-being-having', 
+          enabledRules: [
+            'strong-verbs',
+            'question-being-having', 
             'stick-with-said',
             'literary-language'
           ]
-        });
-      }
-    }),
     {
       name: 'rule-store', // unique name for localStorage
       version: 2
