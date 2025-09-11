@@ -14,21 +14,21 @@ const FALLBACK_RULES: Rule[] = [
   {
     id: 'strong-verbs',
     name: 'Use Strong Verbs',
-    description: 'Replace weak, imprecise verbs with strong verbs that are more specific.',
+    description: 'Neal: Replace weak, imprecise verbs (walked, stood) with strong verbs that are more specific (trudged, malingered). Strong verbs enliven, reduce the need for adjectives and adverbs, and trigger new sentence structures.\n\nAnnie: A strong verb instantly improves your sentence. Use your online thesaurus.',
     type: 'simple',
     severity: 'info'
   },
   {
     id: 'question-being-having',
     name: 'Question Being and Having',
-    description: 'Look for isolated forms of "to be" and "to have". These are the weakest of all verbs.',
+    description: 'Neal: "To be" and "to have" are the weakest of all verbs. Static, they slow a narrative.\n\nAnnie: Question each use of "being" and "having." Can you do better? Maybe replace it with a verb that adds to the sentence?',
     type: 'simple',
     severity: 'warning'
   },
   {
     id: 'stick-with-said',
     name: 'Stick with Said',
-    description: 'Look for non-said attributions. Newspapers use "he said," "she said," or "they said," over and over.',
+    description: 'Neal: Newspapers use the phrase "he said," "she said," or "they said," over and over. You can too. Anything else adds opinion to what is mostly a marker to show who is talking.\n\nAnnie: Be careful when using another verb for attribution. Many sound hokey. Never use "chuckled," for instance. But at times another verb is perfectly fine. Some safe ones are "stated," "announced," whispered," and "remarked."',
     type: 'simple',
     severity: 'info'
   },
@@ -319,6 +319,7 @@ const RuleMenu: React.FC = () => {
           font-size: 13px;
           color: #6b7280;
           line-height: 1.4;
+          white-space: pre-line;
         }
 
         .toggle-switch {

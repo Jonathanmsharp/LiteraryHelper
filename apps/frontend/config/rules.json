@@ -1,9 +1,8 @@
-// /config/rules.json
 [
   {
     "id": "strong-verbs",
     "name": "Use Strong Verbs",
-    "description": "Replace weak, imprecise verbs with strong verbs that are more specific. Strong verbs enliven, reduce the need for adjectives and adverbs, and trigger new sentence structures.",
+    "description": "Neal: Replace weak, imprecise verbs (walked, stood) with strong verbs that are more specific (trudged, malingered). Strong verbs enliven, reduce the need for adjectives and adverbs, and trigger new sentence structures.\n\nAnnie: A strong verb instantly improves your sentence. Use your online thesaurus.",
     "type": "simple",
     "severity": "info",
     "pattern": "\\b(do|did|does|get|got|give|gave|make|made|use|put|take|set|go|went|come|came|run|move|walk|walked|stand|sit|look|looked|see|saw|watch|watched|turn|feel|felt|tell|told|ask|asked|reply|replied|can|could|will|would|shall|should|may|might|must|like|love|hate|want|need|think|thought|know|knew|remember|forgot)\\b"
@@ -11,7 +10,7 @@
   {
     "id": "question-being-having",
     "name": "Question Being and Having",
-    "description": "Look for isolated forms of 'to be' and 'to have'. These are the weakest of all verbs. Static, they slow a narrative. Question each use.",
+    "description": "Neal: \"To be\" and \"to have\" are the weakest of all verbs. Static, they slow a narrative.\n\nAnnie: Question each use of \"being\" and \"having.\" Can you do better? Maybe replace it with a verb that adds to the sentence?",
     "type": "simple",
     "severity": "warning",
     "pattern": "\\b(am|is|are|was|were|be|being|been|have|has|had|having)\\b(?!\\s+\\w+ed\\b)(?!\\s+\\w+ing\\b)"
@@ -19,7 +18,7 @@
   {
     "id": "stick-with-said",
     "name": "Stick with Said",
-    "description": "Look for non-said attributions. Newspapers use 'he said,' 'she said,' or 'they said,' over and over. Anything else adds opinion to what is mostly a marker to show who is talking.",
+    "description": "Neal: Newspapers use the phrase \"he said,\" \"she said,\" or \"they said,\" over and over. You can too. Anything else adds opinion to what is mostly a marker to show who is talking.\n\nAnnie: Be careful when using another verb for attribution. Many sound hokey. Never use \"chuckled,\" for instance. But at times another verb is perfectly fine. Some safe ones are \"stated,\" \"announced,\" whispered,\" and \"remarked.\"",
     "type": "simple",
     "severity": "info",
     "pattern": "\\b(whispered|shouted|screamed|yelled|muttered|mumbled|declared|announced|proclaimed|exclaimed|gasped|sighed|chuckled|laughed|giggled|sobbed|cried|wept|growled|snarled|hissed|roared|bellowed|shrieked|squeaked|chirped|cooed|purred|drawled|remarked|commented|observed|noted|mentioned|added|continued|replied|responded|answered|retorted|snapped|barked|demanded|insisted|argued|protested|complained|grumbled|moaned|groaned|confessed|admitted|revealed|disclosed|shared|explained|clarified|elaborated|described|related|recounted|recalled|remembered|reminisced|mused|pondered|wondered|questioned|inquired|asked)\\b"
@@ -30,7 +29,7 @@
     "description": "Ensure tone stays formal‑friendly throughout.",
     "type": "ai",
     "severity": "warning",
-    "promptTemplate": "You are a tone‑consistency checker. Highlight any sentence that deviates from a formal‑friendly tone..."
+    "promptTemplate": "You are a tone‑consistency checker. Highlight any sentence that deviates from a formal‑friendly tone. For each violation, provide a brief explanation and a suggested revision. Focus on maintaining a professional yet approachable voice throughout the text."
   },
   {
     "id": "claims-without-evidence",
@@ -38,7 +37,7 @@
     "description": "Find factual claims lacking citations or data.",
     "type": "ai",
     "severity": "error",
-    "promptTemplate": "Identify statements that present facts or figures without a supporting citation..."
+    "promptTemplate": "Identify statements that present facts or figures without a supporting citation. For each claim without evidence, suggest adding a citation or rewording to indicate uncertainty."
   },
   {
     "id": "inclusive-language",
@@ -46,6 +45,6 @@
     "description": "Flag non‑inclusive or biased terms and suggest alternatives.",
     "type": "ai",
     "severity": "warning",
-    "promptTemplate": "Detect non‑inclusive language in the text, list the term, why it's problematic, and suggest an alternative..."
+    "promptTemplate": "Detect non‑inclusive language in the text, list the term, why it's problematic, and suggest an alternative."
   }
 ]
