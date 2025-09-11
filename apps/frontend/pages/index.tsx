@@ -8,7 +8,7 @@ export default function HomePage() {
     <div className="app-container">
       <RuleMenu />
       <div className="main-content">
-        <h1 className="app-title">Good Writing</h1>
+        <h1 className="app-title">Good Writing App</h1>
         <p className="app-subtitle">36 Ways to Improve Your Sentences</p>
         <div className="typewriter-container">
           <img src="/images/typewriter.jpg" alt="Vintage typewriter illustration" className="typewriter-image" />
