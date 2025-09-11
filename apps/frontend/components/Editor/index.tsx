@@ -285,9 +285,9 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
             minHeight: '250px',
             outline: 'none',
             padding: '10px',
-            border: '1px solid #ccc',
+            border: '2px solid #4a7c7e',
             borderRadius: '4px',
-            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+            fontFamily: 'Georgia, Times New Roman, serif',
             fontSize: '16px',
             lineHeight: '1.5',
           }}
@@ -314,7 +314,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           display: flex;
           align-items: center;
           gap: 8px;
-          background: #3b82f6;
+          background: #4a7c7e;
           color: white;
           border: none;
           border-radius: 6px;
@@ -326,7 +326,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
         }
         
         .analyze-button:hover:not(:disabled) {
-          background: #2563eb;
+          background: #3a6a6c;
           transform: translateY(-1px);
         }
         
