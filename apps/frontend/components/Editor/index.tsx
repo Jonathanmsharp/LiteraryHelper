@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createEditor, Descendant, Node, Text, Range, Path, Transforms, BaseEditor } from 'slate';
-import { Slate, Editable, withReact, ReactEditor, HistoryEditor } from 'slate-react';
+import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { useAnalysis } from '../../hooks/useAnalysis';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
@@ -34,7 +34,7 @@ type AnalysisMatch = {
 
 declare module 'slate' {
   interface CustomTypes {
-    Editor: BaseEditor & ReactEditor & HistoryEditor;
+    Editor: BaseEditor & ReactEditor;
     Element: CustomElement;
     Text: CustomText;
   }
