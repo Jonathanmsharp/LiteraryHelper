@@ -17,9 +17,7 @@ export const useRuleStore = create<RuleStore>()(
         'strong-verbs',
         'question-being-having', 
         'stick-with-said',
-        'tone-consistency',
-        'claims-without-evidence',
-        'inclusive-language'
+        'literary-language'
       ],
       
       toggleRule: (ruleId: string) => {
@@ -63,16 +61,14 @@ export const useRuleStore = create<RuleStore>()(
             'strong-verbs',
             'question-being-having', 
             'stick-with-said',
-            'tone-consistency',
-            'claims-without-evidence',
-            'inclusive-language'
+            'literary-language'
           ]
         });
       }
     }),
     {
       name: 'rule-store', // unique name for localStorage
-      version: 2, // Increment version to clear old localStorage
+      version: 2
     }
   )
 );
