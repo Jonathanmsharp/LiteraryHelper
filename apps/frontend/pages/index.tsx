@@ -1,10 +1,13 @@
 import React from 'react';
 import Editor from '../components/Editor';
 import RuleSidebar from '../components/Sidebar/RuleSidebar';
+import RuleMenu from '../components/Menu/RuleMenu';
 
 export default function HomePage() {
   return (
     <div className="app-container">
+      <RuleMenu />
+      
       <div className="header">
         <h1 className="main-title">
           <span className="title-word">Good</span>

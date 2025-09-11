@@ -60,15 +60,19 @@ export const useAnalysis = () => {
     setAnalysisId, setIsLoading, setError, setResults, setProgress, setStatus, setFromCache, reset,
   } = useAnalysisStore();
 
-  const analyzeText = useCallback(async (text: string) => {
+  const analyzeText = useCallback(async (text: string, enabledRules?: string[]) => {
     reset();
     setIsLoading(true);
     setStatus('processing');
 
     try {
       console.log('[useAnalysis] Starting analysis for', text.length, 'characters');
+      console.log('[useAnalysis] Enabled rules:', enabledRules || 'all rules');
       
-      const response = await axios.post<AnalysisResult>('/api/analyze', { text });
+      const response = await axios.post<AnalysisResult>('/api/analyze', { 
+        text, 
+        enabledRules 
+      });
       const { jobId, statusEndpoint, matches, status: apiStatus, fromCache: cached } = response.data;
 
       setFromCache(cached || false);

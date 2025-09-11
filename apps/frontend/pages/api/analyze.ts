@@ -17,8 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    // Extract text from request body
-    const { text } = req.body
+    // Extract text and enabled rules from request body
+    const { text, enabledRules } = req.body
     
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ 
@@ -45,7 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId, 
       sessionId, 
       isDemoMode, 
-      textLength: text.length 
+      textLength: text.length,
+      enabledRules: enabledRules || 'all rules'
     })
 
     // Use the same path resolution as the rules API
@@ -61,8 +62,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Found ${allMatches.length} matches from rule processing`)
 
+    // Filter matches based on enabled rules
+    let filteredMatches = allMatches;
+    if (enabledRules && Array.isArray(enabledRules) && enabledRules.length > 0) {
+      filteredMatches = allMatches.filter(match => enabledRules.includes(match.ruleId));
+      console.log(`Filtered to ${filteredMatches.length} matches for enabled rules:`, enabledRules);
+    }
+
     // Flatten all matches from all rules into a single array
-    const flattenedMatches = allMatches.map(match => ({
+    const flattenedMatches = filteredMatches.map(match => ({
       ruleId: match.ruleId,
       range: match.range,
       suggestion: match.suggestion,

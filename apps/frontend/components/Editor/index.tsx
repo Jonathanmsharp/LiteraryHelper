@@ -3,6 +3,7 @@ import { createEditor, Descendant, Node, Text, Range, Path, BaseEditor, NodeEntr
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { useAnalysis } from '../../lib/hooks/useAnalysis';
+import { useRuleStore } from '../../lib/stores/useRuleStore';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
 
 // Type definitions
@@ -81,6 +82,7 @@ interface EditorProps {
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
+  const { enabledRules } = useRuleStore();
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const { openSidebar } = useSidebarStore();
 
@@ -98,7 +100,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     
     console.log('[Editor] Manual analysis triggered for:', textContent.substring(0, 50) + '...');
     setHasAnalyzed(true);
-    analyzeText(textContent);
+    analyzeText(textContent, enabledRules);
   }, [value, analyzeText]);
 
   // Decoration function for highlighting
