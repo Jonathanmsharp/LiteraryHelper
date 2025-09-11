@@ -170,7 +170,7 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     console.log('[decorate] Processing node at path', path, 'with text:', nodeText.substring(0, 20) + '...');
     console.log('[decorate] Node range:', nodeStartOffset, '-', nodeStartOffset + nodeText.length);
 
-    results.forEach(match => {
+    results.forEach((match, index) => {
       // Only apply decoration if the rule is enabled
       if (!enabledRules.includes(match.ruleId)) {
         console.log('[decorate] Skipping match for disabled rule:', match.ruleId);
@@ -194,15 +194,18 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           console.log('[decorate] Checking match:', match.range.text, 'at', matchStart, '-', matchEnd);
           console.log('[decorate] Adding highlight for:', match.range.text, 'at relative offset', relativeStart, '-', relativeEnd);
           
+          // Generate a unique match ID using ruleId and index
+          const matchId = `${match.ruleId}-${index}`;
+          
           ranges.push({
             anchor: { path, offset: relativeStart },
             focus: { path, offset: relativeEnd },
             highlight: {
               type: match.severity,
               ruleId: match.ruleId,
-              matchId: match.id,
-              suggestion: match.suggestion,
-              explanation: match.explanation,
+              matchId: matchId,
+              suggestion: match.suggestion || 'Consider revising this text.',
+              explanation: match.explanation || 'This text matches a writing rule.',
               matchText: match.range.text,
             }
           });
