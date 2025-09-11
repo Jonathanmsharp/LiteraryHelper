@@ -14,11 +14,11 @@ export default function HomePage() {
       </div>
       
       <div className="typewriter-illustration">
-        <div className="typewriter">
-          <div className="typewriter-body"></div>
-          <div className="typewriter-keys"></div>
-          <div className="paper"></div>
-        </div>
+        <img 
+          src="/images/typewriter.jpg" 
+          alt="Vintage typewriter illustration" 
+          className="typewriter-image"
+        />
       </div>
       
       <div className="content">
@@ -78,95 +78,18 @@ export default function HomePage() {
           background: #faf8f5;
         }
         
-        .typewriter {
-          position: relative;
-          width: 200px;
-          height: 120px;
+        .typewriter-image {
+          max-width: 300px;
+          width: 100%;
+          height: auto;
+          border-radius: 8px;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+          transition: transform 0.3s ease;
         }
         
-        .typewriter-body {
-          width: 180px;
-          height: 80px;
-          background: linear-gradient(145deg, #5a8a8c, #4a7c7e);
-          border-radius: 8px 8px 15px 15px;
-          position: relative;
-          box-shadow: 0 8px 20px rgba(74, 124, 126, 0.3);
-        }
-        
-        .typewriter-body::before {
-          content: '';
-          position: absolute;
-          top: 15px;
-          left: 20px;
-          right: 20px;
-          height: 2px;
-          background: #2c2c2c;
-          border-radius: 1px;
-        }
-        
-        .typewriter-body::after {
-          content: '';
-          position: absolute;
-          bottom: 10px;
-          left: 15px;
-          right: 15px;
-          height: 8px;
-          background: #3a6a6c;
-          border-radius: 4px;
-        }
-        
-        .typewriter-keys {
-          position: absolute;
-          bottom: -15px;
-          left: 10px;
-          right: 10px;
-          height: 20px;
-          background: linear-gradient(145deg, #4a7c7e, #3a6a6c);
-          border-radius: 0 0 8px 8px;
-        }
-        
-        .typewriter-keys::before {
-          content: '';
-          position: absolute;
-          top: 3px;
-          left: 8px;
-          right: 8px;
-          height: 2px;
-          background: #2c2c2c;
-          border-radius: 1px;
-        }
-        
-        .paper {
-          position: absolute;
-          top: -40px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 120px;
-          height: 50px;
-          background: #fefefe;
-          border: 1px solid #e0e0e0;
-          border-radius: 2px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .paper::before {
-          content: '';
-          position: absolute;
-          top: 8px;
-          left: 8px;
-          right: 8px;
-          height: 1px;
-          background: #f0f0f0;
-        }
-        
-        .paper::after {
-          content: '';
-          position: absolute;
-          top: 12px;
-          left: 8px;
-          right: 8px;
-          height: 1px;
-          background: #f0f0f0;
+        .typewriter-image:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
         }
         
         .content {
@@ -198,20 +121,14 @@ export default function HomePage() {
             font-size: 1rem;
           }
           
-          .typewriter {
-            width: 150px;
-            height: 90px;
+          .typewriter-image {
+            max-width: 250px;
           }
-          
-          .typewriter-body {
-            width: 135px;
-            height: 60px;
-          }
-          
-          .paper {
-            width: 90px;
-            height: 40px;
-            top: -30px;
+        }
+        
+        @media (max-width: 480px) {
+          .typewriter-image {
+            max-width: 200px;
           }
         }
       `}</style>
