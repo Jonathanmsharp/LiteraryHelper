@@ -17,12 +17,14 @@ const RuleMenu: React.FC = () => {
   const { enabledRules, toggleRule } = useRuleStore();
 
   useEffect(() => {
-    if (isOpen && rules.length === 0) {
+    if (isOpen) {
       loadRules();
     }
-  }, [isOpen, rules.length]);
+  }, [isOpen]);
 
   const loadRules = async () => {
+    if (rules.length > 0) return; // Don't reload if already loaded
+    
     setLoading(true);
     setError(null);
     try {
@@ -33,55 +35,59 @@ const RuleMenu: React.FC = () => {
       }
       const data = await response.json();
       console.log('[RuleMenu] Rules loaded:', data);
-      setRules(data.rules || []);
+      const rulesArray = data.rules || [];
+      console.log('[RuleMenu] Setting rules array:', rulesArray);
+      setRules(rulesArray);
     } catch (err) {
       console.error('[RuleMenu] Failed to load rules:', err);
       setError(err instanceof Error ? err.message : 'Failed to load rules');
       // Fallback to hardcoded rules if API fails
-      setRules([
+      const fallbackRules = [
         {
           id: 'strong-verbs',
           name: 'Use Strong Verbs',
           description: 'Replace weak, imprecise verbs with strong verbs that are more specific.',
-          type: 'simple',
-          severity: 'info'
+          type: 'simple' as const,
+          severity: 'info' as const
         },
         {
           id: 'question-being-having',
           name: 'Question Being and Having',
           description: 'Look for isolated forms of "to be" and "to have". These are the weakest of all verbs.',
-          type: 'simple',
-          severity: 'warning'
+          type: 'simple' as const,
+          severity: 'warning' as const
         },
         {
           id: 'stick-with-said',
           name: 'Stick with Said',
           description: 'Look for non-said attributions. Newspapers use "he said," "she said," or "they said," over and over.',
-          type: 'simple',
-          severity: 'info'
+          type: 'simple' as const,
+          severity: 'info' as const
         },
         {
           id: 'tone-consistency',
           name: 'Tone Consistency',
           description: 'Ensure tone stays formal‑friendly throughout.',
-          type: 'ai',
-          severity: 'warning'
+          type: 'ai' as const,
+          severity: 'warning' as const
         },
         {
           id: 'claims-without-evidence',
           name: 'Claims Without Evidence',
           description: 'Find factual claims lacking citations or data.',
-          type: 'ai',
-          severity: 'error'
+          type: 'ai' as const,
+          severity: 'error' as const
         },
         {
           id: 'inclusive-language',
           name: 'Inclusive Language',
           description: 'Flag non‑inclusive or biased terms and suggest alternatives.',
-          type: 'ai',
-          severity: 'warning'
+          type: 'ai' as const,
+          severity: 'warning' as const
         }
-      ]);
+      ];
+      console.log('[RuleMenu] Using fallback rules:', fallbackRules);
+      setRules(fallbackRules);
     } finally {
       setLoading(false);
     }
@@ -99,6 +105,8 @@ const RuleMenu: React.FC = () => {
   const getTypeIcon = (type: string) => {
     return type === 'ai' ? '🤖' : '⚡';
   };
+
+  console.log('[RuleMenu] Current state:', { isOpen, rules: rules.length, loading, error });
 
   return (
     <>
