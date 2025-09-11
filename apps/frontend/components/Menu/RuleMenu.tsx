@@ -12,15 +12,80 @@ interface Rule {
 const RuleMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [rules, setRules] = useState<Rule[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { enabledRules, toggleRule } = useRuleStore();
 
   useEffect(() => {
-    // Load rules from the config
-    fetch('/api/rules')
-      .then(res => res.json())
-      .then(data => setRules(data.rules || []))
-      .catch(err => console.error('Failed to load rules:', err));
-  }, []);
+    if (isOpen && rules.length === 0) {
+      loadRules();
+    }
+  }, [isOpen, rules.length]);
+
+  const loadRules = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('[RuleMenu] Loading rules from API...');
+      const response = await fetch('/api/rules');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('[RuleMenu] Rules loaded:', data);
+      setRules(data.rules || []);
+    } catch (err) {
+      console.error('[RuleMenu] Failed to load rules:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load rules');
+      // Fallback to hardcoded rules if API fails
+      setRules([
+        {
+          id: 'strong-verbs',
+          name: 'Use Strong Verbs',
+          description: 'Replace weak, imprecise verbs with strong verbs that are more specific.',
+          type: 'simple',
+          severity: 'info'
+        },
+        {
+          id: 'question-being-having',
+          name: 'Question Being and Having',
+          description: 'Look for isolated forms of "to be" and "to have". These are the weakest of all verbs.',
+          type: 'simple',
+          severity: 'warning'
+        },
+        {
+          id: 'stick-with-said',
+          name: 'Stick with Said',
+          description: 'Look for non-said attributions. Newspapers use "he said," "she said," or "they said," over and over.',
+          type: 'simple',
+          severity: 'info'
+        },
+        {
+          id: 'tone-consistency',
+          name: 'Tone Consistency',
+          description: 'Ensure tone stays formal‑friendly throughout.',
+          type: 'ai',
+          severity: 'warning'
+        },
+        {
+          id: 'claims-without-evidence',
+          name: 'Claims Without Evidence',
+          description: 'Find factual claims lacking citations or data.',
+          type: 'ai',
+          severity: 'error'
+        },
+        {
+          id: 'inclusive-language',
+          name: 'Inclusive Language',
+          description: 'Flag non‑inclusive or biased terms and suggest alternatives.',
+          type: 'ai',
+          severity: 'warning'
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -72,6 +137,24 @@ const RuleMenu: React.FC = () => {
         </div>
         
         <div className="menu-content">
+          {loading && (
+            <div className="loading-message">
+              Loading rules...
+            </div>
+          )}
+          
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+          
+          {rules.length === 0 && !loading && !error && (
+            <div className="no-rules-message">
+              No rules available
+            </div>
+          )}
+          
           {rules.map((rule) => (
             <div key={rule.id} className="rule-item">
               <div className="rule-header">
@@ -221,6 +304,17 @@ const RuleMenu: React.FC = () => {
 
         .menu-content {
           padding: 20px;
+        }
+
+        .loading-message, .error-message, .no-rules-message {
+          text-align: center;
+          padding: 20px;
+          color: #6b7280;
+          font-style: italic;
+        }
+
+        .error-message {
+          color: #ef4444;
         }
 
         .rule-item {
