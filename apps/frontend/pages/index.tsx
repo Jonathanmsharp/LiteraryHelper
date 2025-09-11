@@ -82,14 +82,14 @@ export default function HomePage() {
           max-width: 300px;
           width: 100%;
           height: auto;
-          border-radius: 8px;
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+          border-radius: 0;
+          box-shadow: none;
           transition: transform 0.3s ease;
+          mix-blend-mode: normal;
         }
         
         .typewriter-image:hover {
           transform: translateY(-2px);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
         }
         
         .content {
