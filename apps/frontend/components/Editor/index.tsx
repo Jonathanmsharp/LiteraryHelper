@@ -41,15 +41,6 @@ declare module 'slate' {
     Editor: BaseEditor & ReactEditor;
     Element: CustomElement;
     Text: CustomText;
-    Range: Range & {
-      highlight?: {
-        type: 'error' | 'warning' | 'info';
-        ruleId: string;
-        matchId: string;
-        suggestion: string;
-        explanation: string;
-        matchText: string;
-      };
     };
   }
 }
