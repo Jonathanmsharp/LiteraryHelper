@@ -2,134 +2,118 @@ import React from 'react';
 import Editor from '../components/Editor';
 import RuleSidebar from '../components/Sidebar/RuleSidebar';
 import RuleMenu from '../components/Menu/RuleMenu';
+import TipsSection from '../components/TipsSection/TipsSection';
 
 export default function HomePage() {
   return (
     <div className="app-container">
       <RuleMenu />
-      
-      <div className="header">
-        <h1 className="main-title">
-          <span className="title-word">Good</span>
-          <span className="title-word large">Writing</span>
-        </h1>
-        <p className="subtitle">36 Ways to Improve Your Sentences</p>
-      </div>
-      
-      <div className="typewriter-illustration">
-        <img 
-          src="/images/typewriter.jpg" 
-          alt="Vintage typewriter illustration" 
-          className="typewriter-image"
-        />
-      </div>
-      
-      <div className="content">
-        <p className="instruction">Start typing below to analyze your writing...</p>
+      <div className="main-content">
+        <h1 className="app-title">Good Writing</h1>
+        <p className="app-subtitle">36 Ways to Improve Your Sentences</p>
+        <div className="typewriter-container">
+          <img src="/images/typewriter.jpg" alt="Vintage typewriter illustration" className="typewriter-image" />
+        </div>
+        <p className="editor-intro">Start typing below to analyze your writing...</p>
         <Editor placeholder="Type your text here to get real-time writing suggestions..." />
+        <RuleSidebar />
       </div>
       
-      <RuleSidebar />
-      
-      <style jsx>{`
-        .app-container {
-          min-height: 100vh;
-          background: #fdfcfb;
-          font-family: 'Georgia', 'Times New Roman', serif;
+      <TipsSection />
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Georgia&family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+          margin: 0;
           padding: 0;
-          margin: 0;
+          box-sizing: border-box;
+          background-color: #fdfcfb;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          color: #333;
+          line-height: 1.6;
         }
-        
-        .header {
-          text-align: center;
-          padding: 60px 20px 40px;
-          background: #fdfcfb;
-        }
-        
-        .main-title {
-          margin: 0 0 20px 0;
-          font-weight: 400;
-          letter-spacing: 2px;
-        }
-        
-        .title-word {
-          display: block;
-          color: #2c2c2c;
-          font-size: 3.5rem;
-          line-height: 1.1;
-        }
-        
-        .title-word.large {
-          font-size: 4.2rem;
-          margin-top: -10px;
-        }
-        
-        .subtitle {
-          color: #4a7c7e;
-          font-size: 1.1rem;
-          font-weight: 300;
-          margin: 0;
-          letter-spacing: 1px;
-          font-family: 'Helvetica Neue', Arial, sans-serif;
-        }
-        
-        .typewriter-illustration {
+
+        .app-container {
           display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 40px 20px;
-          background: #fdfcfb;
+          flex-direction: column;
+          min-height: 100vh;
+          position: relative;
         }
-        
-        .typewriter-image {
-          max-width: 300px;
-          width: 100%;
-          height: auto;
-          border-radius: 0;
-          box-shadow: none;
-          transition: transform 0.3s ease;
-          mix-blend-mode: normal;
-        }
-        
-        .typewriter-image:hover {
-          transform: translateY(-2px);
-        }
-        
-        .content {
+
+        .main-content {
           max-width: 900px;
           margin: 0 auto;
-          padding: 40px 20px 60px;
-          background: #fdfcfb;
-        }
-        
-        .instruction {
-          color: #5a5a5a;
-          font-size: 1.1rem;
-          margin-bottom: 30px;
+          padding: 20px;
+          flex-grow: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           text-align: center;
-          font-style: italic;
-          letter-spacing: 0.5px;
+          position: relative;
+          z-index: 1;
         }
-        
+
+        .app-title {
+          font-family: 'Georgia', serif;
+          font-size: 3.5em;
+          color: #4a7c7e;
+          margin-bottom: 5px;
+          font-weight: bold;
+          letter-spacing: -1px;
+        }
+
+        .app-subtitle {
+          font-family: 'Inter', sans-serif;
+          font-size: 1.2em;
+          color: #666;
+          margin-bottom: 30px;
+          font-weight: 400;
+        }
+
+        .editor-intro {
+          font-family: 'Inter', sans-serif;
+          font-size: 1em;
+          color: #555;
+          margin-bottom: 20px;
+        }
+
+        .typewriter-container {
+          margin-bottom: 40px;
+          position: relative;
+          display: inline-block;
+        }
+
+        .typewriter-image {
+          max-width: 300px;
+          height: auto;
+          display: block;
+          transition: transform 0.3s ease;
+        }
+
+        .typewriter-image:hover {
+          transform: translateY(-5px);
+        }
+
         @media (max-width: 768px) {
-          .title-word {
-            font-size: 2.8rem;
+          .app-title {
+            font-size: 2.8em;
           }
-          
-          .title-word.large {
-            font-size: 3.2rem;
+          .app-subtitle {
+            font-size: 1em;
           }
-          
-          .subtitle {
-            font-size: 1rem;
-          }
-          
           .typewriter-image {
             max-width: 250px;
           }
         }
-        
+
         @media (max-width: 480px) {
+          .app-title {
+            font-size: 2.2em;
+          }
+          .app-subtitle {
+            font-size: 0.9em;
+          }
           .typewriter-image {
             max-width: 200px;
           }
