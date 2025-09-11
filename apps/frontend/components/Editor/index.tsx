@@ -63,7 +63,7 @@ const Element = ({ attributes, children, element }: any) => {
 };
 
 // Leaf renderer for highlighting
-const Leaf = React.memo(({ attributes, children, leaf }: any) => {
+const Leaf = ({ attributes, children, leaf }: any) => {
   const openSidebar = useSidebarStore((state) => state.openSidebar);
   const style: React.CSSProperties = {};
 
@@ -120,9 +120,7 @@ const Leaf = React.memo(({ attributes, children, leaf }: any) => {
       {children}
     </span>
   );
-});
-
-Leaf.displayName = 'Leaf';
+};
 
 interface EditorProps {
   defaultValue?: Descendant[];
