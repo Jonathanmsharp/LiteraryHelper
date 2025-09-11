@@ -2,7 +2,6 @@ import React from 'react';
 import Editor from '../components/Editor';
 import RuleSidebar from '../components/Sidebar/RuleSidebar';
 import RuleMenu from '../components/Menu/RuleMenu';
-import TipsSection from '../components/TipsSection/TipsSection';
 
 export default function HomePage() {
   return (
@@ -18,8 +17,6 @@ export default function HomePage() {
         <Editor placeholder="Type your text here to get real-time writing suggestions..." />
         <RuleSidebar />
       </div>
-      
-      <TipsSection />
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Georgia&family=Inter:wght@400;500;600;700&display=swap');
