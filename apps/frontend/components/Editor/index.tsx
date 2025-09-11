@@ -5,7 +5,6 @@ import { withHistory } from 'slate-history';
 import { useAnalysis } from '../../lib/hooks/useAnalysis';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
 import { useRuleStore } from '../../lib/stores/useRuleStore';
-import { debounce } from 'lodash';
 
 // Type definitions
 type CustomElement = { type: 'paragraph'; children: CustomText[] };
