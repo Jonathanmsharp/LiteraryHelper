@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createEditor, Descendant, Node, Text, Range, Path, Transforms, BaseEditor } from 'slate';
 import { Slate, Editable, withReact, ReactEditor, HistoryEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
-import { debounce } from 'lodash/debounce';
 import { useAnalysis } from '../../hooks/useAnalysis';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
 
@@ -20,6 +19,17 @@ type CustomText = {
     suggestion?: string;
     explanation?: string;
   };
+};
+
+type AnalysisMatch = {
+  id: string;
+  ruleId: string;
+  start: number;
+  end: number;
+  text: string;
+  suggestion: string;
+  explanation: string;
+  severity: 'error' | 'warning' | 'info';
 };
 
 declare module 'slate' {
@@ -115,6 +125,106 @@ const Leaf = ({ attributes, children, leaf }: any) => {
   );
 };
 
+// Helper function to convert absolute text positions to Slate path and offset
+function getSlateLocation(editor: any, offset: number): [Path, number] | null {
+  let currentOffset = 0;
+  
+  for (const [node, path] of Node.texts(editor)) {
+    const textLength = node.text.length;
+    
+    if (currentOffset <= offset && offset <= currentOffset + textLength) {
+      return [path, offset - currentOffset];
+    }
+    
+    currentOffset += textLength;
+  }
+  
+  return null;
+}
+
+// Clear all highlights from the editor
+function clearHighlights(editor: any) {
+  const textNodes = Array.from(Node.texts(editor));
+  
+  textNodes.forEach(([node, path]) => {
+    if (node.highlight) {
+      Transforms.setNodes(
+        editor,
+        { highlight: undefined },
+        { at: path }
+      );
+    }
+  });
+}
+
+// Apply highlights to the editor
+function applyHighlights(editor: any, matches: AnalysisMatch[]) {
+  console.log('[applyHighlights] Starting with', matches.length, 'matches');
+  
+  // Clear existing highlights first
+  clearHighlights(editor);
+  
+  // Sort matches by start position (descending) to avoid offset issues
+  const sortedMatches = [...matches].sort((a, b) => b.start - a.start);
+  
+  sortedMatches.forEach((match) => {
+    const { start, end, ruleId, severity, suggestion, explanation } = match;
+    
+    // Get the text content to verify the match
+    const textContent = Node.string(editor);
+    const matchedText = textContent.slice(start, end);
+    
+    if (matchedText !== match.text) {
+      console.warn(`Text mismatch for match ${match.id}: expected "${match.text}", got "${matchedText}"`);
+      return;
+    }
+    
+    // Find the Slate location for the start of the match
+    const startLocation = getSlateLocation(editor, start);
+    if (!startLocation) {
+      console.warn(`Could not find Slate location for match ${match.id} at position ${start}`);
+      return;
+    }
+    
+    const [startPath, startOffset] = startLocation;
+    const endLocation = getSlateLocation(editor, end);
+    
+    if (!endLocation) {
+      console.warn(`Could not find Slate location for match ${match.id} at position ${end}`);
+      return;
+    }
+    
+    const [endPath, endOffset] = endLocation;
+    
+    // Create the range for the match
+    const range: Range = {
+      anchor: { path: startPath, offset: startOffset },
+      focus: { path: endPath, offset: endOffset },
+    };
+    
+    // Apply the highlight
+    Transforms.setNodes(
+      editor,
+      {
+        highlight: {
+          matchId: match.id,
+          ruleId,
+          severity,
+          suggestion,
+          explanation,
+        },
+      },
+      {
+        at: range,
+        match: Text.isText,
+        split: true,
+      }
+    );
+    
+    console.log(`[applyHighlights] Applied highlight for "${match.text}" (${ruleId})`);
+  });
+}
+
 interface EditorProps {
   defaultValue?: Descendant[];
   placeholder?: string;
@@ -125,90 +235,97 @@ interface EditorProps {
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
   // Create editor instance
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
 
-  const debouncedAnalyze = useCallback(
-    debounce((text: string) => {
-      if (text.trim().length > 10) {
-        console.log('[Editor] Starting analysis for:', text.substring(0, 50) + '...');
-        analyzeText(text);
-      }
-    }, 1000),
-    [analyzeText]
-  );
+  // Manual analysis function
+  const handleAnalyze = useCallback(async () => {
+    const textContent = value.map((node) => Node.string(node)).join('\n');
+    
+    if (textContent.trim().length < 10) {
+      alert('Please enter at least 10 characters before analyzing.');
+      return;
+    }
+    
+    console.log('[Editor] Manual analysis triggered for:', textContent.substring(0, 50) + '...');
+    setHasAnalyzed(true);
+    analyzeText(textContent);
+  }, [value, analyzeText]);
 
-  const debouncedOnChange = useCallback(
-    debounce((value: Descendant[]) => {
-      const textContent = value.map((node) => Node.string(node)).join('\n');
-      if (onChange) onChange(textContent);
-      debouncedAnalyze(textContent);
-    }, 500),
-    [onChange, debouncedAnalyze]
-  );
-
-  // Cleanup debounced functions on unmount
+  // Apply highlights when analysis results change (only after manual analysis)
   useEffect(() => {
-    return () => {
-      debouncedAnalyze.cancel();
-      debouncedOnChange.cancel();
-    };
-  }, [debouncedAnalyze, debouncedOnChange]);
+    if (results && results.length > 0 && hasAnalyzed) {
+      console.log('[Editor] Applying highlights for', results.length, 'matches');
+      
+      // Convert results to analysis matches
+      const analysisMatches: AnalysisMatch[] = results.map((match, index) => ({
+        id: `${match.ruleId}-${index}`,
+        ruleId: match.ruleId,
+        start: match.range.start,
+        end: match.range.end,
+        text: match.range.text,
+        suggestion: match.suggestion ?? '',
+        explanation: match.explanation ?? '',
+        severity: match.severity,
+      }));
+
+      // Apply highlights
+      applyHighlights(editor, analysisMatches);
+    }
+  }, [results, hasAnalyzed, editor]);
+
+  // Reset analysis state when text changes
+  const handleTextChange = useCallback((newValue: Descendant[]) => {
+    setValue(newValue);
+    if (onChange) {
+      const textContent = newValue.map((node) => Node.string(node)).join('\n');
+      onChange(textContent);
+    }
+    // Reset analysis state when text changes
+    if (hasAnalyzed) {
+      setHasAnalyzed(false);
+      clearHighlights(editor);
+    }
+  }, [onChange, hasAnalyzed, editor]);
 
   return (
     <div className="editor-container">
-      {isLoading && (
-        <div className="analysis-indicator">
-          <div className="loading-spinner"></div>
-          <span>Analyzing...</span>
-        </div>
-      )}
+      <div className="editor-controls">
+        <button 
+          onClick={handleAnalyze}
+          disabled={isLoading || value.map((node) => Node.string(node)).join('\n').trim().length < 10}
+          className="analyze-button"
+        >
+          {isLoading ? (
+            <>
+              <div className="button-spinner"></div>
+              Analyzing...
+            </>
+          ) : (
+            <>
+              🔍 Analyze Writing
+            </>
+          )}
+        </button>
+        {hasAnalyzed && results && results.length > 0 && (
+          <div className="analysis-summary">
+            Found {results.length} writing suggestions
+          </div>
+        )}
+      </div>
+      
       {error && (
         <div className="error-indicator">
           <span>Analysis failed: {error}</span>
         </div>
       )}
-      {results && results.length > 0 && (
-        <div className="analysis-results">
-          <h4>Analysis Results ({results.length} matches found):</h4>
-          <ul>
-            {results.map((match, index) => (
-              <li key={index} style={{ 
-                padding: '5px', 
-                margin: '2px 0', 
-                backgroundColor: match.severity === 'error' ? '#FEE2E2' : 
-                                match.severity === 'warning' ? '#FEF3C7' : '#DBEAFE',
-                borderRadius: '3px',
-                cursor: 'pointer'
-              }}
-              onClick={() => {
-                const { openSidebar } = useSidebarStore.getState();
-                openSidebar({
-                  id: `${match.ruleId}-${index}`,
-                  ruleId: match.ruleId,
-                  range: match.range,
-                  severity: match.severity,
-                  suggestion: match.suggestion,
-                  explanation: match.explanation,
-                });
-              }}>
-                <strong>{match.ruleId}</strong>: "{match.range.text}" 
-                <span style={{ fontSize: '0.9em', color: '#666' }}>
-                  ({match.severity})
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      
       <Slate
         editor={editor}
         value={value}
-        onChange={(newValue) => {
-          setValue(newValue);
-          debouncedOnChange(newValue);
-        }}
+        onChange={handleTextChange}
       >
         <Editable
           renderElement={Element}
@@ -236,67 +353,63 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
           margin: 0 auto;
         }
         
-        .analysis-indicator {
-          position: absolute;
-          top: -40px;
-          right: 0;
+        .editor-controls {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 15px;
+          padding: 10px 0;
+        }
+        
+        .analyze-button {
           display: flex;
           align-items: center;
           gap: 8px;
-          background: #f0f9ff;
-          border: 1px solid #0ea5e9;
-          border-radius: 4px;
-          padding: 8px 12px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 10px 20px;
           font-size: 14px;
-          color: #0369a1;
-          z-index: 10;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
         }
         
-        .analysis-results {
-          margin-bottom: 15px;
-          padding: 15px;
-          background: #f8f9fa;
-          border: 1px solid #e9ecef;
-          border-radius: 4px;
+        .analyze-button:hover:not(:disabled) {
+          background: #2563eb;
+          transform: translateY(-1px);
         }
         
-        .analysis-results h4 {
-          margin: 0 0 10px 0;
-          font-size: 16px;
-          color: #495057;
+        .analyze-button:disabled {
+          background: #9ca3af;
+          cursor: not-allowed;
+          transform: none;
         }
         
-        .analysis-results ul {
-          margin: 0;
-          padding: 0;
-          list-style: none;
-        }
-        
-        .analysis-results li {
-          font-size: 14px;
-          line-height: 1.4;
-        }
-        
-        .loading-spinner {
+        .button-spinner {
           width: 16px;
           height: 16px;
-          border: 2px solid #e0e7ff;
-          border-top: 2px solid #3b82f6;
+          border: 2px solid #ffffff40;
+          border-top: 2px solid #ffffff;
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
         
+        .analysis-summary {
+          color: #059669;
+          font-size: 14px;
+          font-weight: 500;
+        }
+        
         .error-indicator {
-          position: absolute;
-          top: -40px;
-          right: 0;
           background: #fef2f2;
           border: 1px solid #ef4444;
           border-radius: 4px;
           padding: 8px 12px;
           font-size: 14px;
           color: #dc2626;
-          z-index: 10;
+          margin-bottom: 15px;
         }
         
         @keyframes spin {
