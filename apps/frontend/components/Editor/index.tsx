@@ -1,17 +1,18 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createEditor, Descendant, Node, Text, Range, Path, BaseEditor, NodeEntry, Editor as SlateEditor } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { useAnalysis } from '../../lib/hooks/useAnalysis';
-import { useRuleStore } from '../../lib/stores/useRuleStore';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
+import { useRuleStore } from '../../lib/stores/useRuleStore';
+import { debounce } from 'lodash';
 
 // Type definitions
 type CustomElement = { type: 'paragraph'; children: CustomText[] };
-type CustomText = { 
-  text: string; 
-  bold?: boolean; 
-  italic?: boolean; 
+type CustomText = {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
   underline?: boolean;
 };
 
@@ -37,6 +38,7 @@ type HighlightDecoration = Range & {
   };
 };
 
+// Extend Slate's CustomTypes to include our custom text properties
 declare module 'slate' {
   interface CustomTypes {
     Editor: BaseEditor & ReactEditor;
@@ -49,28 +51,79 @@ declare module 'slate' {
 const defaultEditorValue: Descendant[] = [
   {
     type: 'paragraph',
-    children: [{ text: '' }],
+    children: [{ text: 'Type your text here to get real-time writing suggestions...' }],
   },
 ];
 
 // Element renderer
-const Element = ({ attributes, children }: any) => {
-  return <p {...attributes}>{children}</p>;
+const Element = ({ attributes, children, element }: any) => {
+  switch (element.type) {
+    default:
+      return <p {...attributes}>{children}</p>;
+  }
 };
 
-// Helper function to get the absolute text offset for a given path
-const getAbsoluteOffset = (editor: SlateEditor, path: Path): number => {
-  let offset = 0;
-  
-  for (const [node, nodePath] of Node.texts(editor)) {
-    if (Path.equals(nodePath, path)) {
-      break;
+// Leaf renderer for highlighting
+const Leaf = React.memo(({ attributes, children, leaf }: any) => {
+  const openSidebar = useSidebarStore((state) => state.openSidebar);
+  const style: React.CSSProperties = {};
+
+  if (leaf.highlight) {
+    switch (leaf.highlight.type) {
+      case 'error':
+        style.backgroundColor = '#FEE2E2';
+        style.borderBottom = '2px solid #EF4444';
+        break;
+      case 'warning':
+        style.backgroundColor = '#FEF3C7';
+        style.borderBottom = '2px solid #F59E0B';
+        break;
+      case 'info':
+        style.backgroundColor = '#DBEAFE';
+        style.borderBottom = '2px solid #3B82F6';
+        break;
     }
-    offset += node.text.length;
+    style.cursor = 'pointer';
+    style.borderRadius = '2px';
+    style.padding = '1px 2px';
+    style.margin = '0 1px';
   }
-  
-  return offset;
-};
+
+  // Handle click on highlighted text
+  const handleClick = (e: React.MouseEvent) => {
+    if (leaf.highlight) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log('[Leaf] Clicked on highlight:', leaf.highlight);
+
+      const match = {
+        id: leaf.highlight.matchId,
+        ruleId: leaf.highlight.ruleId,
+        range: { start: 0, end: 0, text: leaf.highlight.matchText },
+        severity: leaf.highlight.type,
+        suggestion: leaf.highlight.suggestion,
+        explanation: leaf.highlight.explanation,
+      };
+
+      console.log('[Leaf] Opening sidebar with match:', match);
+      openSidebar(match);
+    }
+  };
+
+  return (
+    <span
+      {...attributes}
+      style={style}
+      onClick={leaf.highlight ? handleClick : undefined}
+      title={leaf.highlight ? `${leaf.highlight.ruleId}: ${leaf.highlight.suggestion}` : undefined}
+    >
+      {children}
+    </span>
+  );
+});
+
+Leaf.displayName = 'Leaf';
 
 interface EditorProps {
   defaultValue?: Descendant[];
@@ -82,9 +135,9 @@ interface EditorProps {
 const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'Start writing...', readOnly = false, onChange }: EditorProps) => {
   const [value, setValue] = useState<Descendant[]>(defaultValue);
   const { analyzeText, isLoading, results, error } = useAnalysis();
-  const { enabledRules } = useRuleStore();
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const { openSidebar } = useSidebarStore();
+  const { enabledRules } = useRuleStore();
 
   // Create editor instance
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
@@ -99,9 +152,10 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     }
     
     console.log('[Editor] Manual analysis triggered for:', textContent.substring(0, 50) + '...');
+    console.log('[Editor] Using enabled rules:', enabledRules);
     setHasAnalyzed(true);
     analyzeText(textContent, enabledRules);
-  }, [value, analyzeText]);
+  }, [value, analyzeText, enabledRules]); // Fixed: Added enabledRules to dependencies
 
   // Decoration function for highlighting
   const decorate = useCallback(([node, path]: NodeEntry): Range[] => {
@@ -110,262 +164,158 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
     if (!results || results.length === 0 || !hasAnalyzed || !Text.isText(node)) {
       return ranges;
     }
-    
-    const nodeText = node.text;
-    const nodeStart = getAbsoluteOffset(editor, path);
-    const nodeEnd = nodeStart + nodeText.length;
-    
+
+    const nodeText = Node.string(node);
+    const nodeStartOffset = SlateEditor.start(editor, path).offset;
+
     console.log('[decorate] Processing node at path', path, 'with text:', nodeText.substring(0, 20) + '...');
-    console.log('[decorate] Node range:', nodeStart, '-', nodeEnd);
-    
-    results.forEach((match, index) => {
+    console.log('[decorate] Node range:', nodeStartOffset, '-', nodeStartOffset + nodeText.length);
+
+    results.forEach(match => {
+      // Only apply decoration if the rule is enabled
+      if (!enabledRules.includes(match.ruleId)) {
+        console.log('[decorate] Skipping match for disabled rule:', match.ruleId);
+        return;
+      }
+
       const matchStart = match.range.start;
       const matchEnd = match.range.end;
-      
-      console.log('[decorate] Checking match:', match.range.text, 'at', matchStart, '-', matchEnd);
-      
-      // Check if this match overlaps with the current text node
-      if (matchStart < nodeEnd && matchEnd > nodeStart) {
-        // Calculate the intersection
-        const intersectionStart = Math.max(matchStart, nodeStart);
-        const intersectionEnd = Math.min(matchEnd, nodeEnd);
-        
-        // Convert to node-relative offsets
-        const relativeStart = intersectionStart - nodeStart;
-        const relativeEnd = intersectionEnd - nodeStart;
-        
-        console.log('[decorate] Adding highlight for:', match.range.text, 'at relative offset', relativeStart, '-', relativeEnd);
-        
-        ranges.push({
-          anchor: { path, offset: relativeStart },
-          focus: { path, offset: relativeEnd },
-          highlight: {
-            type: match.severity,
-            ruleId: match.ruleId,
-            matchId: `${match.ruleId}-${index}`,
-            suggestion: match.suggestion || '',
-            explanation: match.explanation || '',
-            matchText: match.range.text
-          }
-        });
+
+      // Check if the match overlaps with the current text node
+      if (matchStart < nodeStartOffset + nodeText.length && matchEnd > nodeStartOffset) {
+        // Calculate the intersection of the match and the current node
+        const highlightStart = Math.max(matchStart, nodeStartOffset);
+        const highlightEnd = Math.min(matchEnd, nodeStartOffset + nodeText.length);
+
+        // Convert absolute offsets to relative offsets within the current node
+        const relativeStart = highlightStart - nodeStartOffset;
+        const relativeEnd = highlightEnd - nodeStartOffset;
+
+        if (relativeStart < relativeEnd) {
+          console.log('[decorate] Checking match:', match.range.text, 'at', matchStart, '-', matchEnd);
+          console.log('[decorate] Adding highlight for:', match.range.text, 'at relative offset', relativeStart, '-', relativeEnd);
+          
+          ranges.push({
+            anchor: { path, offset: relativeStart },
+            focus: { path, offset: relativeEnd },
+            highlight: {
+              type: match.severity,
+              ruleId: match.ruleId,
+              matchId: match.id,
+              suggestion: match.suggestion,
+              explanation: match.explanation,
+              matchText: match.range.text,
+            }
+          });
+        }
       }
     });
-    
+
     console.log('[decorate] Generated', ranges.length, 'decorations for node');
     return ranges;
-  }, [results, hasAnalyzed, editor]);
+  }, [editor, results, hasAnalyzed, enabledRules]); // Fixed: Added enabledRules to dependencies
 
-  // Leaf renderer with highlighting
-  const renderLeaf = useCallback(({ attributes, children, leaf }: any) => {
-    let style: React.CSSProperties = {};
-
-    // Apply text formatting
-    if (leaf.bold) {
-      style.fontWeight = 'bold';
-    }
-    if (leaf.italic) {
-      style.fontStyle = 'italic';
-    }
-    if (leaf.underline) {
-      style.textDecoration = 'underline';
-    }
-
-    // Apply highlighting from decorations
-    if (leaf.highlight) {
-      const severity = leaf.highlight.type;
-      switch (severity) {
-        case 'error':
-          style.backgroundColor = '#FEE2E2';
-          style.borderBottom = '2px solid #EF4444';
-          break;
-        case 'warning':
-          style.backgroundColor = '#FEF3C7';
-          style.borderBottom = '2px solid #F59E0B';
-          break;
-        case 'info':
-          style.backgroundColor = '#DBEAFE';
-          style.borderBottom = '2px solid #3B82F6';
-          break;
-      }
-      style.cursor = 'pointer';
-      style.borderRadius = '2px';
-      style.padding = '1px 2px';
-      style.margin = '0 1px';
-    }
-
-    // Handle click on highlighted text
-    const handleClick = (e: React.MouseEvent) => {
-      if (leaf.highlight) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        console.log('[Leaf] Clicked on highlight:', leaf.highlight);
-        
-        const match = {
-          id: leaf.highlight.matchId,
-          ruleId: leaf.highlight.ruleId,
-          range: { start: 0, end: 0, text: leaf.highlight.matchText },
-          severity: leaf.highlight.type,
-          suggestion: leaf.highlight.suggestion,
-          explanation: leaf.highlight.explanation,
-        };
-        
-        console.log('[Leaf] Opening sidebar with match:', match);
-        openSidebar(match);
-      }
+  // Cleanup debounced functions
+  useEffect(() => {
+    return () => {
+      // debouncedOnChange.cancel(); // Removed as debouncedOnChange is no longer directly calling analyze
     };
+  }, []);
 
-    return (
-      <span
-        {...attributes}
-        style={style}
-        onClick={leaf.highlight ? handleClick : undefined}
-        title={leaf.highlight ? `${leaf.highlight.ruleId}: ${leaf.highlight.suggestion}` : undefined}
-      >
-        {children}
-      </span>
-    );
-  }, [openSidebar]);
-
-  // Reset analysis state when text changes
   const handleTextChange = useCallback((newValue: Descendant[]) => {
     setValue(newValue);
-    if (onChange) {
-      const textContent = newValue.map((node) => Node.string(node)).join('\n');
-      onChange(textContent);
-    }
-    // Reset analysis state when text changes
-    if (hasAnalyzed) {
-      setHasAnalyzed(false);
-    }
-  }, [onChange, hasAnalyzed]);
+    setHasAnalyzed(false); // Reset analysis status on text change
+    const textContent = newValue.map((node) => Node.string(node)).join('\n');
+    if (onChange) onChange(textContent);
+  }, [onChange]);
 
   return (
     <div className="editor-container">
-      <div className="editor-controls">
-        <button 
-          onClick={handleAnalyze}
-          disabled={isLoading || value.map((node) => Node.string(node)).join('\n').trim().length < 10}
-          className="analyze-button"
-        >
-          {isLoading ? (
-            <>
-              <div className="button-spinner"></div>
-              Analyzing...
-            </>
-          ) : (
-            <>
-              🔍 Analyze Writing
-            </>
-          )}
-        </button>
-        {hasAnalyzed && results && results.length > 0 && (
-          <div className="analysis-summary">
-            Found {results.length} writing suggestions
-          </div>
-        )}
-      </div>
-      
-      {error && (
-        <div className="error-indicator">
-          <span>Analysis failed: {error}</span>
-        </div>
+      {isLoading && <div className="loading-indicator">Analyzing...</div>}
+      {error && <div className="error-message">Error: {error}</div>}
+      {results && results.length > 0 && hasAnalyzed && (
+        <div className="analysis-summary">Found {results.length} writing suggestions</div>
       )}
-      
       <Slate
         editor={editor}
         initialValue={value}
         onValueChange={handleTextChange}
       >
         <Editable
-          decorate={decorate}
           renderElement={Element}
-          renderLeaf={renderLeaf}
+          renderLeaf={Leaf}
+          decorate={decorate}
           placeholder={placeholder}
           readOnly={readOnly}
           style={{
             minHeight: '250px',
             outline: 'none',
-            padding: '10px',
-            border: '2px solid #4a7c7e',
-            borderRadius: '4px',
-            fontFamily: 'Georgia, Times New Roman, serif',
-            fontSize: '16px',
-            lineHeight: '1.5',
+            padding: '15px 20px',
+            border: '1px solid #4a7c7e',
+            borderRadius: '8px',
+            fontFamily: 'Georgia, serif',
+            fontSize: '1.1em',
+            lineHeight: '1.6',
+            backgroundColor: '#fdfcfb',
+            color: '#333',
           }}
         />
       </Slate>
+      <button onClick={handleAnalyze} disabled={isLoading} className="analyze-button">
+        {isLoading ? 'Analyzing...' : 'Analyze Writing'}
+      </button>
 
       <style jsx>{`
         .editor-container {
           position: relative;
           width: 100%;
           max-width: 800px;
-          margin: 0 auto;
+          margin: 30px auto;
+          background-color: #fdfcfb;
+          border-radius: 10px;
+          box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
         }
-        
-        .editor-controls {
-          display: flex;
-          align-items: center;
-          gap: 15px;
+        .loading-indicator, .error-message, .analysis-summary {
           margin-bottom: 15px;
-          padding: 10px 0;
+          padding: 10px 15px;
+          border-radius: 5px;
+          font-size: 0.9em;
+          font-family: 'Inter', sans-serif;
         }
-        
+        .loading-indicator {
+          background-color: #e0f7fa;
+          color: #00796b;
+        }
+        .error-message {
+          background-color: #ffebee;
+          color: #c62828;
+        }
+        .analysis-summary {
+          background-color: #e8f5e9;
+          color: #2e7d32;
+        }
         .analyze-button {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: #4a7c7e;
+          background-color: #4a7c7e;
           color: white;
           border: none;
-          border-radius: 6px;
-          padding: 10px 20px;
-          font-size: 14px;
-          font-weight: 500;
+          padding: 12px 25px;
+          border-radius: 8px;
           cursor: pointer;
-          transition: all 0.2s ease;
+          font-size: 1.05em;
+          margin-top: 20px;
+          transition: background-color 0.2s ease, transform 0.2s ease;
+          font-family: 'Inter', sans-serif;
+          font-weight: 600;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
-        
-        .analyze-button:hover:not(:disabled) {
-          background: #3a6a6c;
-          transform: translateY(-1px);
-        }
-        
         .analyze-button:disabled {
-          background: #9ca3af;
+          background-color: #a0c8f9;
           cursor: not-allowed;
-          transform: none;
+          box-shadow: none;
         }
-        
-        .button-spinner {
-          width: 16px;
-          height: 16px;
-          border: 2px solid #ffffff40;
-          border-top: 2px solid #ffffff;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        
-        .analysis-summary {
-          color: #059669;
-          font-size: 14px;
-          font-weight: 500;
-        }
-        
-        .error-indicator {
-          background: #fef2f2;
-          border: 1px solid #ef4444;
-          border-radius: 4px;
-          padding: 8px 12px;
-          font-size: 14px;
-          color: #dc2626;
-          margin-bottom: 15px;
-        }
-        
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+        .analyze-button:hover:not(:disabled) {
+          background-color: #5a8a8c;
+          transform: translateY(-2px);
         }
       `}</style>
     </div>
