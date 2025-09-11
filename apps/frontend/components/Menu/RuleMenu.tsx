@@ -9,89 +9,56 @@ interface Rule {
   severity: 'error' | 'warning' | 'info';
 }
 
+// Hardcoded rules as fallback
+const FALLBACK_RULES: Rule[] = [
+  {
+    id: 'strong-verbs',
+    name: 'Use Strong Verbs',
+    description: 'Replace weak, imprecise verbs with strong verbs that are more specific.',
+    type: 'simple',
+    severity: 'info'
+  },
+  {
+    id: 'question-being-having',
+    name: 'Question Being and Having',
+    description: 'Look for isolated forms of "to be" and "to have". These are the weakest of all verbs.',
+    type: 'simple',
+    severity: 'warning'
+  },
+  {
+    id: 'stick-with-said',
+    name: 'Stick with Said',
+    description: 'Look for non-said attributions. Newspapers use "he said," "she said," or "they said," over and over.',
+    type: 'simple',
+    severity: 'info'
+  },
+  {
+    id: 'tone-consistency',
+    name: 'Tone Consistency',
+    description: 'Ensure tone stays formal‑friendly throughout.',
+    type: 'ai',
+    severity: 'warning'
+  },
+  {
+    id: 'claims-without-evidence',
+    name: 'Claims Without Evidence',
+    description: 'Find factual claims lacking citations or data.',
+    type: 'ai',
+    severity: 'error'
+  },
+  {
+    id: 'inclusive-language',
+    name: 'Inclusive Language',
+    description: 'Flag non‑inclusive or biased terms and suggest alternatives.',
+    type: 'ai',
+    severity: 'warning'
+  }
+];
+
 const RuleMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [rules, setRules] = useState<Rule[]>(FALLBACK_RULES);
   const { enabledRules, toggleRule } = useRuleStore();
-
-  useEffect(() => {
-    if (isOpen) {
-      loadRules();
-    }
-  }, [isOpen]);
-
-  const loadRules = async () => {
-    if (rules.length > 0) return; // Don't reload if already loaded
-    
-    setLoading(true);
-    setError(null);
-    try {
-      console.log('[RuleMenu] Loading rules from API...');
-      const response = await fetch('/api/rules');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log('[RuleMenu] Rules loaded:', data);
-      const rulesArray = data.rules || [];
-      console.log('[RuleMenu] Setting rules array:', rulesArray);
-      setRules(rulesArray);
-    } catch (err) {
-      console.error('[RuleMenu] Failed to load rules:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load rules');
-      // Fallback to hardcoded rules if API fails
-      const fallbackRules = [
-        {
-          id: 'strong-verbs',
-          name: 'Use Strong Verbs',
-          description: 'Replace weak, imprecise verbs with strong verbs that are more specific.',
-          type: 'simple' as const,
-          severity: 'info' as const
-        },
-        {
-          id: 'question-being-having',
-          name: 'Question Being and Having',
-          description: 'Look for isolated forms of "to be" and "to have". These are the weakest of all verbs.',
-          type: 'simple' as const,
-          severity: 'warning' as const
-        },
-        {
-          id: 'stick-with-said',
-          name: 'Stick with Said',
-          description: 'Look for non-said attributions. Newspapers use "he said," "she said," or "they said," over and over.',
-          type: 'simple' as const,
-          severity: 'info' as const
-        },
-        {
-          id: 'tone-consistency',
-          name: 'Tone Consistency',
-          description: 'Ensure tone stays formal‑friendly throughout.',
-          type: 'ai' as const,
-          severity: 'warning' as const
-        },
-        {
-          id: 'claims-without-evidence',
-          name: 'Claims Without Evidence',
-          description: 'Find factual claims lacking citations or data.',
-          type: 'ai' as const,
-          severity: 'error' as const
-        },
-        {
-          id: 'inclusive-language',
-          name: 'Inclusive Language',
-          description: 'Flag non‑inclusive or biased terms and suggest alternatives.',
-          type: 'ai' as const,
-          severity: 'warning' as const
-        }
-      ];
-      console.log('[RuleMenu] Using fallback rules:', fallbackRules);
-      setRules(fallbackRules);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -105,8 +72,6 @@ const RuleMenu: React.FC = () => {
   const getTypeIcon = (type: string) => {
     return type === 'ai' ? '🤖' : '⚡';
   };
-
-  console.log('[RuleMenu] Current state:', { isOpen, rules: rules.length, loading, error });
 
   return (
     <>
@@ -145,24 +110,6 @@ const RuleMenu: React.FC = () => {
         </div>
         
         <div className="menu-content">
-          {loading && (
-            <div className="loading-message">
-              Loading rules...
-            </div>
-          )}
-          
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-          
-          {rules.length === 0 && !loading && !error && (
-            <div className="no-rules-message">
-              No rules available
-            </div>
-          )}
-          
           {rules.map((rule) => (
             <div key={rule.id} className="rule-item">
               <div className="rule-header">
@@ -312,17 +259,6 @@ const RuleMenu: React.FC = () => {
 
         .menu-content {
           padding: 20px;
-        }
-
-        .loading-message, .error-message, .no-rules-message {
-          text-align: center;
-          padding: 20px;
-          color: #6b7280;
-          font-style: italic;
-        }
-
-        .error-message {
-          color: #ef4444;
         }
 
         .rule-item {
