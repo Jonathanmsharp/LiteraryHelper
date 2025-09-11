@@ -154,6 +154,11 @@ const RuleSidebar: React.FC = () => {
               </div>
               
               <div className="section">
+                <h4>Writing Tip</h4>
+                <p className="tip-text">{ruleInfo.tips}</p>
+              </div>
+
+              <div className="section">
                 <h4>Examples</h4>
                 <div className="examples-list">
                   {ruleInfo.examples.map((example, index) => (
@@ -169,11 +174,6 @@ const RuleSidebar: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              </div>
-
-              <div className="section">
-                <h4>Writing Tip</h4>
-                <p className="tip-text">{ruleInfo.tips}</p>
               </div>
             </>
           )}
@@ -270,6 +270,15 @@ const RuleSidebar: React.FC = () => {
             color: #4a7c7e;
             font-family: 'Georgia', serif;
           }
+          .tip-text {
+            font-style: italic;
+            color: #555;
+            line-height: 1.6;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #4a7c7e;
+          }
           .examples-list {
             display: flex;
             flex-direction: column;
@@ -305,15 +314,6 @@ const RuleSidebar: React.FC = () => {
           }
           .example-text {
             flex: 1;
-          }
-          .tip-text {
-            font-style: italic;
-            color: #555;
-            line-height: 1.6;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border-left: 3px solid #4a7c7e;
           }
           .affected-text {
             margin-bottom: 15px;
