@@ -1,0 +1,54 @@
+# Test sentences for Literary Helper - New Rules
+
+## Strong Verbs Rule (Detects weak, imprecise verbs)
+1. "He walked to the store and got some food."
+2. "The manager made a decision to implement changes."
+3. "We had a discussion about the problem."
+4. "The team did an analysis of the data."
+5. "She looked at the document and saw the issue."
+6. "They went to the meeting and came back with results."
+7. "I think this is a good idea and feel confident about it."
+8. "The student did well on the test and got a high grade."
+9. "We need to make changes to improve the system."
+10. "The company put together a plan for the future."
+
+## Question Being/Having Rule (Detects isolated be/have verbs)
+11. "The book is on the table."
+12. "The meeting was yesterday."
+13. "The results are very interesting."
+14. "The team has a lot of experience."
+15. "The project is almost complete."
+16. "The data was collected last week."
+17. "The system is working properly."
+18. "The report has all the necessary information."
+19. "The solution is simple and effective."
+20. "The team was very productive this week."
+
+## Stick with Said Rule (Detects non-said dialogue attributions)
+21. "\"Hello there,\" he whispered."
+22. "\"I can't believe it,\" she exclaimed."
+23. "\"This is amazing,\" they shouted."
+24. "\"I don't understand,\" he muttered."
+25. "\"That's incredible,\" she gasped."
+26. "\"I'm so excited,\" he chuckled."
+27. "\"This is terrible,\" she groaned."
+28. "\"I love it,\" they declared."
+29. "\"That's perfect,\" he announced."
+30. "\"I'm confused,\" she sighed."
+
+## Mixed Issues (Multiple rules triggered)
+31. "He walked to the meeting and said, \"This is very important.\""
+32. "The book is interesting, and she whispered, \"I love it.\""
+33. "They got the results and exclaimed, \"This is amazing!\""
+34. "The team was productive, and he muttered, \"We did well.\""
+35. "She looked at the data and declared, \"This is very clear.\""
+
+## Complex Examples (All three rules)
+36. "He walked quickly to the store and got some food. The book is very interesting. \"Hello there,\" he whispered loudly."
+37. "The team was very productive. They made good decisions and had great discussions. \"This is excellent,\" she exclaimed with enthusiasm."
+38. "The manager went to the meeting and saw the results. The data was very clear. \"I think this is perfect,\" he declared confidently."
+
+## Old Rules (For comparison - these should NOT be detected by new rules)
+39. "This is a very good example of really bad writing." (Very/Really weakener - old rule)
+40. "The report was written by the team yesterday." (Passive voice - old rule)
+41. "The end result was very clear and obvious." (Redundant phrases - old rule)
