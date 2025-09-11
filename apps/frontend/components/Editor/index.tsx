@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createEditor, Descendant, Node, Text, Range, Path, Transforms, BaseEditor } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
-import { useAnalysis } from '../../hooks/useAnalysis';
+import { useAnalysis } from '../../lib/hooks/useAnalysis';
 import { useSidebarStore } from '../Sidebar/RuleSidebar';
 
 // Type definitions
