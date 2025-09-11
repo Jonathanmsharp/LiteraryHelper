@@ -31,7 +31,7 @@ export default function HomePage() {
       <style jsx>{`
         .app-container {
           min-height: 100vh;
-          background: #fefefe;
+          background: #fdfcfb;
           font-family: 'Georgia', 'Times New Roman', serif;
           padding: 0;
           margin: 0;
@@ -40,7 +40,7 @@ export default function HomePage() {
         .header {
           text-align: center;
           padding: 60px 20px 40px;
-          background: #fefefe;
+          background: #fdfcfb;
         }
         
         .main-title {
@@ -75,7 +75,7 @@ export default function HomePage() {
           justify-content: center;
           align-items: center;
           padding: 40px 20px;
-          background: #fefefe;
+          background: #fdfcfb;
         }
         
         .typewriter-image {
@@ -96,7 +96,7 @@ export default function HomePage() {
           max-width: 900px;
           margin: 0 auto;
           padding: 40px 20px 60px;
-          background: #fefefe;
+          background: #fdfcfb;
         }
         
         .instruction {
