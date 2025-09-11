@@ -60,6 +60,13 @@ const RuleMenu: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>(FALLBACK_RULES);
   const { enabledRules, toggleRule } = useRuleStore();
 
+  const handleToggleRule = (ruleId: string) => {
+    console.log('[RuleMenu] Toggle clicked for rule:', ruleId);
+    console.log('[RuleMenu] Current enabled rules before toggle:', enabledRules);
+    toggleRule(ruleId);
+    console.log('[RuleMenu] Toggle called for rule:', ruleId);
+  };
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'error': return '#ef4444';
@@ -72,6 +79,8 @@ const RuleMenu: React.FC = () => {
   const getTypeIcon = (type: string) => {
     return type === 'ai' ? '🤖' : '⚡';
   };
+
+  console.log('[RuleMenu] Current enabled rules:', enabledRules);
 
   return (
     <>
@@ -128,7 +137,7 @@ const RuleMenu: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={enabledRules.includes(rule.id)}
-                    onChange={() => toggleRule(rule.id)}
+                    onChange={() => handleToggleRule(rule.id)}
                   />
                   <span className="toggle-slider"></span>
                 </label>

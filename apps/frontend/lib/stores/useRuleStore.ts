@@ -22,26 +22,37 @@ export const useRuleStore = create<RuleStore>()(
       ],
       
       toggleRule: (ruleId: string) => {
+        console.log('[RuleStore] Toggling rule:', ruleId);
         set((state) => {
           const isEnabled = state.enabledRules.includes(ruleId);
+          console.log('[RuleStore] Rule is currently enabled:', isEnabled);
+          console.log('[RuleStore] Current enabled rules:', state.enabledRules);
+          
           if (isEnabled) {
+            const newRules = state.enabledRules.filter(id => id !== ruleId);
+            console.log('[RuleStore] Removing rule, new enabled rules:', newRules);
             return {
-              enabledRules: state.enabledRules.filter(id => id !== ruleId)
+              enabledRules: newRules
             };
           } else {
+            const newRules = [...state.enabledRules, ruleId];
+            console.log('[RuleStore] Adding rule, new enabled rules:', newRules);
             return {
-              enabledRules: [...state.enabledRules, ruleId]
+              enabledRules: newRules
             };
           }
         });
       },
       
       setEnabledRules: (rules: string[]) => {
+        console.log('[RuleStore] Setting enabled rules:', rules);
         set({ enabledRules: rules });
       },
       
       isRuleEnabled: (ruleId: string) => {
-        return get().enabledRules.includes(ruleId);
+        const enabled = get().enabledRules.includes(ruleId);
+        console.log('[RuleStore] Checking if rule is enabled:', ruleId, enabled);
+        return enabled;
       }
     }),
     {
