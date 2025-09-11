@@ -324,8 +324,8 @@ const Editor = React.memo(({ defaultValue = defaultEditorValue, placeholder = 'S
       
       <Slate
         editor={editor}
-        value={value}
-        onChange={handleTextChange}
+        initialValue={value}
+        onValueChange={handleTextChange}
       >
         <Editable
           renderElement={Element}
